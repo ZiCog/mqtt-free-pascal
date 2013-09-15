@@ -1,13 +1,6 @@
 
 {$mode delphi}
 
-{$CHECKPOINTER ON}   // Also need -gh command line option
-{$OBJECTCHECKS ON}
-{$OVERFLOWCHECKS ON}
-{$RANGECHECKS ON}     
-
-
-
 program simple;
 
 uses  cthreads, Classes, SysUtils, MQTT, MQTTReadThread;
