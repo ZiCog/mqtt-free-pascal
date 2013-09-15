@@ -1,5 +1,5 @@
 
-{$mode delphi}
+{$mode objfpc}
 
 program simple;
 
@@ -42,20 +42,20 @@ end;
 
 
 var
-   simple : TSimple;
+   s : TSimple;
    MQTTClient: TMQTTClient;
   
 (*MAIN*)
 begin
-    simple.Create;
+    s.Create;
 
     MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
     writeln ('mqtt created.');
 
-    MQTTClient.OnConnAck := simple.OnConnAck;
-    MQTTClient.OnPingResp := simple.OnPingResp;
-    MQTTClient.OnPublish := simple.OnPublish;
-    MQTTClient.OnSubAck := simple.OnSubAck;
+    MQTTClient.OnConnAck := @s.OnConnAck;
+    MQTTClient.OnPingResp := @s.OnPingResp;
+    MQTTClient.OnPublish := @s.OnPublish;
+    MQTTClient.OnSubAck := @s.OnSubAck;
 
     writeln (MQTTClient.Connect);
 

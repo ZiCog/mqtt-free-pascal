@@ -29,7 +29,7 @@
    -------------------------------------------------
 }
 
-{$mode delphi}
+{$mode objfpc}
 
 unit MQTT;
 
@@ -96,7 +96,7 @@ type
         function VariableHeaderSubscribe: TBytes;
         function VariableHeaderUnsubscribe: TBytes;
         // Helper Function - Puts the seperate component together into an Array of Bytes for transmission
-        function BuildCommand(FixedHeader: Byte; RemainL: TRemainingLength; VariableHead: TBytes; Payload: Array of Byte): TBytes;
+        function BuildCommand(FixedHead: Byte; RemainL: TRemainingLength; VariableHead: TBytes; Payload: Array of Byte): TBytes;
         // Internally Write the provided data to the Socket. Wrapper function.
         function SocketWrite(Data: TBytes): boolean;
         // These are chained event handlers from the ReceiveThread. They trigger the
@@ -165,10 +165,10 @@ begin
       begin
         Result := True;
         FReadThread := TMQTTReadThread.Create(@FSocket);
-        FReadThread.OnConnAck := Self.OnRTConnAck;
-        FReadThread.OnPublish := Self.OnRTPublish;
-        FReadThread.OnPingResp := Self.OnRTPingResp;
-        FReadThread.OnSubAck := Self.OnRTSubAck;
+        FReadThread.OnConnAck := @Self.OnRTConnAck;
+        FReadThread.OnPublish := @Self.OnRTPublish;
+        FReadThread.OnPingResp := @Self.OnRTPingResp;
+        FReadThread.OnSubAck := @Self.OnRTSubAck;
         FReadThread.Resume;
       end else Result := False;
     end;
@@ -494,7 +494,7 @@ begin
   Move(Source, Dest[DestLen], Length(Source));
 end;
 
-function TMQTTClient.BuildCommand(FixedHeader: Byte; RemainL: TRemainingLength;
+function TMQTTClient.BuildCommand(FixedHead: Byte; RemainL: TRemainingLength;
   VariableHead: TBytes; Payload: Array of Byte): TBytes;
 var
   iNextIndex: integer;
@@ -502,7 +502,7 @@ begin
   // Attach Fixed Header (1 byte)
   iNextIndex := 0;
   SetLength(Result, 1);
-  Result[iNextIndex] := FixedHeader;
+  Result[iNextIndex] := FixedHead;
 
   // Attach RemainingLength (1-4 bytes)
   iNextIndex := Length(Result);

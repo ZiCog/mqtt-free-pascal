@@ -26,11 +26,7 @@
   -------------------------------------------------
 }
 
-{$mode delphi} 
-{$CHECKPOINTER ON}       // Also need -gh command line option
-{$OBJECTCHECKS ON}
-{$OVERFLOWCHECKS ON}
-{$RANGECHECKS ON}
+{$mode objfpc} 
 
 unit MQTTReadThread;
 
@@ -152,7 +148,7 @@ begin
                     rxState := 3;
                 end;
                 FCurrentData := CurrentMessage;
-                Synchronize(HandleData);
+                Synchronize(@HandleData);
                 rxState := 0;
             end;
         3 : begin
