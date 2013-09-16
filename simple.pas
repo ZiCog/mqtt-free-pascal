@@ -1,5 +1,5 @@
 
-{$mode objfpc}
+
 
 program simple;
 
@@ -7,15 +7,16 @@ uses  cthreads, Classes, SysUtils, MQTT, MQTTReadThread;
 
 type
     { Define a simple class }
-    TSimple = class(TObject)
-        procedure OnConnAck(Sender: TObject; ReturnCode: Integer);
+   //TSimple = class(TObject)
+   TSimple = object
+        procedure OnConnAck(Sender: TObject; ReturnCode: longint);
         procedure OnPingResp(Sender: TObject);
-        procedure OnSubAck(Sender: TObject; MessageID : Integer; GrantedQoS : Integer);
+        procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
         procedure OnUnSubAck(Sender: TObject);
         procedure OnPublish(Sender: TObject; topic, payload: string);
  end;
 
-procedure TSimple.OnConnAck(Sender: TObject; ReturnCode: Integer);
+procedure TSimple.OnConnAck(Sender: TObject; ReturnCode: longint);
 begin
 //  writeln ('Connection Acknowledged, Return Code: ');  {   + IntToStr(Ord(ReturnCode))); }
 end;
@@ -25,7 +26,7 @@ begin
   writeln ('Publish Received. Topic: '+ topic + ' Payload: ' + payload);
 end;
 
-procedure TSimple.OnSubAck(Sender: TObject; MessageID : Integer; GrantedQoS : Integer);
+procedure TSimple.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
 begin
   writeln ('Sub Ack Received');
 end;
@@ -47,7 +48,7 @@ var
   
 (*MAIN*)
 begin
-    s.Create;
+    //s.Create;
 
     MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
     writeln ('mqtt created.');
