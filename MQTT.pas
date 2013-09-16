@@ -110,6 +110,7 @@ type
         function isConnected: boolean;
         function Connect: boolean;
         function Disconnect: boolean;
+        procedure ForceDisconnect;
         function Publish(Topic: string; sPayload: string): boolean; overload;
         function Publish(Topic: string; sPayload: string; Retain: boolean): boolean; overload;
         function Subscribe(Topic: string): integer;
@@ -196,6 +197,25 @@ begin
     FisConnected := False;
     FSocket.Free;
   end else Result := False;
+end;
+
+{*------------------------------------------------------------------------------
+  Terminate the reader thread and close the socket forcibly.
+------------------------------------------------------------------------------*}
+procedure TMQTTClient.ForceDisconnect;
+begin
+    if FReadThread <> nil then
+    begin
+        FReadThread.Terminate;
+        FReadThread := nil;
+    end;
+    if FSocket <> nil then
+    begin
+        FSocket.CloseSocket;
+        FSocket.Free;
+        FSocket := nil;
+    end;
+    FisConnected := False;
 end;
 
 {*------------------------------------------------------------------------------

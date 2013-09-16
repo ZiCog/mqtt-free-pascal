@@ -155,6 +155,7 @@ begin
             end;
         end;
     end;
+    writeln ('TERMINATED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
 end;
 
 procedure TMQTTReadThread.HandleData;
