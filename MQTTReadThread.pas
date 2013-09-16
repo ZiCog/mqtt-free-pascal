@@ -55,7 +55,7 @@ type
   TMQTTReadThread = class(TThread)
   private
     FPSocket: PTCPBlockSocket;
-    FCurrentData: TMQTTMessage;
+    CurrentMessage: TMQTTMessage;
     // Events
     FConnAckEvent: TConnAckEvent;
     FPublishEvent: TPublishEvent;
@@ -95,7 +95,6 @@ end;
 
 procedure TMQTTReadThread.Execute;
 var
-  CurrentMessage: TMQTTMessage;
   rxState: integer;
   remainingLength: integer;
   digit: integer;
@@ -147,7 +146,6 @@ begin
                     writeln ('Error: 2:');
                     rxState := 3;
                 end;
-                FCurrentData := CurrentMessage;
                 Synchronize(@HandleData);
                 rxState := 0;
             end;
@@ -169,19 +167,19 @@ var
   ResponseVH: TBytes;
   ConnectReturn: Integer;
 begin
-  if (FCurrentData.FixedHeader <> 0) then
+  if (CurrentMessage.FixedHeader <> 0) then
     begin
-      MessageType := FCurrentData.FixedHeader shr 4;
+      MessageType := CurrentMessage.FixedHeader shr 4;
 
       if (MessageType = Ord(MQTT.CONNACK)) then
         begin
           // Check if we were given a Connect Return Code.
           ConnectReturn := 0;
           // Any return code except 0 is an Error
-          if ((Length(FCurrentData.Data) > 0) and (Length(FCurrentData.Data) < 4)) then
+          if ((Length(CurrentMessage.Data) > 0) and (Length(CurrentMessage.Data) < 4)) then
             begin
-              ConnectReturn := FCurrentData.Data[1];
-              Exception.Create('Connect Error Returned by the Broker. Error Code: ' + IntToStr(FCurrentData.Data[1]));
+              ConnectReturn := CurrentMessage.Data[1];
+              Exception.Create('Connect Error Returned by the Broker. Error Code: ' + IntToStr(CurrentMessage.Data[1]));
             end;
           if Assigned(OnConnAck) then OnConnAck(Self, ConnectReturn);
         end
@@ -189,24 +187,24 @@ begin
       if (MessageType = Ord(MQTT.PUBLISH)) then
         begin
           // Read the Length Bytes
-          DataLen := BytesToStrLength(Copy(FCurrentData.Data, 0, 2));
+          DataLen := BytesToStrLength(Copy(CurrentMessage.Data, 0, 2));
           // Get the Topic
-          SetString(Topic, PChar(@FCurrentData.Data[2]), DataLen);
+          SetString(Topic, PChar(@CurrentMessage.Data[2]), DataLen);
           // Get the Payload
-          SetString(Payload, PChar(@FCurrentData.Data[2 + DataLen]), (Length(FCurrentData.Data) - 2 - DataLen));
+          SetString(Payload, PChar(@CurrentMessage.Data[2 + DataLen]), (Length(CurrentMessage.Data) - 2 - DataLen));
           if Assigned(OnPublish) then OnPublish(Self, Topic, Payload);
         end
       else
       if (MessageType = Ord(MQTT.SUBACK)) then
         begin
           // Reading the Message ID
-          ResponseVH := Copy(FCurrentData.Data, 0, 2);
+          ResponseVH := Copy(CurrentMessage.Data, 0, 2);
           DataLen := BytesToStrLength(ResponseVH);
           // Next Read the Granted QoS
           QoS := 0;
-          if (Length(FCurrentData.Data) - 2) > 0 then
+          if (Length(CurrentMessage.Data) - 2) > 0 then
             begin
-              ResponseVH := Copy(FCurrentData.Data, 2, 1);
+              ResponseVH := Copy(CurrentMessage.Data, 2, 1);
               QoS := ResponseVH[0];
             end;
           if Assigned(OnSubAck) then OnSubAck(Self, DataLen, QoS);
@@ -215,7 +213,7 @@ begin
       if (MessageType = Ord(MQTT.UNSUBACK)) then
         begin
           // Read the Message ID for the event handler
-          ResponseVH := Copy(FCurrentData.Data, 0, 2);
+          ResponseVH := Copy(CurrentMessage.Data, 0, 2);
           DataLen := BytesToStrLength(ResponseVH);
           if Assigned(OnUnSubAck) then OnUnSubAck(Self, DataLen);
         end
