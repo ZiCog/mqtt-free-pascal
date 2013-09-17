@@ -19,8 +19,8 @@ this in an embedded system with no display.
 To build the demo:
 ------------------
 
-$ cd examples/embeddedApp
-$ ./build
+    $ cd examples/embeddedApp
+    $ ./build
 
 
 Running embeddedApp out of the box reqires you have access to test.mosquitto.org.
