@@ -1,20 +1,53 @@
+{
+ -------------------------------------------------
+  embeddedApp.pas -  An example of using the MQTT Client from a command line program
+                     as might be used in an embedded system.
 
-program simple;
+  MQTT - http://mqtt.org/
+  Spec - http://publib.boulder.ibm.com/infocenter/wmbhelp/v6r0m0/topic/com.ibm.etools.mft.doc/ac10840_.htm
 
-uses  cthreads, Classes, SysUtils, MQTT, MQTTReadThread;
+  MIT License -  http://www.opensource.org/licenses/mit-license.php
+  Copyright (c) 2009 RSM Ltd.
 
-type TSimpleStates = (
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+   -------------------------------------------------
+}
+
+program embeddedApp;
+
+// cthreads is required to get the MQTTReadThread working.
+uses  cthreads, Classes, MQTT, sysutils;
+
+// The major states of the application.
+type TembeddedAppStates = (
           STARTING,
           RUNNING,
           FAILING
         );
 type
-    { Define a simple class }
-   TSimple = object
+   // Define class for the embedded application
+   // The MQTT callbacks must be methods of an object not stanalone procedures.
+   TembeddedApp = object
         MQTTClient: TMQTTClient;
         pingCounter : integer;
         pingTimer : integer;
-        state : TSimpleStates;
+        state : TembeddedAppStates;
         procedure run ();
         procedure OnConnAck(Sender: TObject; ReturnCode: longint);
         procedure OnPingResp(Sender: TObject);
@@ -23,44 +56,41 @@ type
         procedure OnPublish(Sender: TObject; topic, payload: string);
 end;
 
-procedure TSimple.OnConnAck(Sender: TObject; ReturnCode: longint);
+procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
 begin
   writeln ('Connection Acknowledged, Return Code: ' + IntToStr(Ord(ReturnCode))); 
 end;
 
-procedure TSimple.OnPublish(Sender: TObject; topic, payload: string);
+procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: string);
 begin
   writeln ('Publish Received. Topic: '+ topic + ' Payload: ' + payload);
 end;
 
-procedure TSimple.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
+procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
 begin
   writeln ('Sub Ack Received');
 end;
 
-procedure TSimple.OnUnSubAck(Sender: TObject);
+procedure TembeddedApp.OnUnSubAck(Sender: TObject);
 begin
   writeln ('Unsubscribe Ack Received');
 end;
 
-procedure TSimple.OnPingResp(Sender: TObject);
+procedure TembeddedApp.OnPingResp(Sender: TObject);
 begin
   writeln ('PING! PONG!');
+  // Reset ping counter to indicate all is OK.
   pingCounter := 0;
-  write('Ping counter : ');
-  writeln (pingCounter);
 end;
 
-procedure TSimple.run();
+procedure TembeddedApp.run();
 begin
-    writeln ('Simple MQTT Client test.');
+    writeln ('embeddedApp MQTT Client.');
     state := STARTING;
 
-    // MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
-    MQTTClient := TMQTTClient.Create('192.168.0.12', 1883);
-    writeln ('mqtt created.');
+    MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
 
-    { Setup callback handlers }
+    // Setup callback handlers
     MQTTClient.OnConnAck := @OnConnAck;
     MQTTClient.OnPingResp := @OnPingResp;
     MQTTClient.OnPublish := @OnPublish;
@@ -70,13 +100,13 @@ begin
     begin
         case state of
             STARTING : begin
-                    { Connect to MQTT server }
-                    writeln('State: STARTING');
+                    // Connect to MQTT server
+                    writeln('STARTING...');
                     pingCounter := 0;
                     pingTimer := 0;
                     if MQTTClient.Connect then
                     begin
-                        { Make subscriptions }
+                        // Make subscriptions
                         MQTTClient.Subscribe('/rsm.ie/#');
                         state := RUNNING;
                     end
@@ -86,8 +116,7 @@ begin
                     end;
                 end;
             RUNNING : begin
-                    { Publish stuff }
-                    writeln('State: RUNNING');
+                    // Publish stuff
                     if not MQTTClient.Publish('/rsm.ie/fits/detectors', '0101000101000111') then
                     begin
                         state := FAILING; 
@@ -115,7 +144,7 @@ begin
 
                 end; 
             FAILING : begin
-                    writeln('State: FAILING');
+                    writeln('FAILING...');
                     MQTTClient.ForceDisconnect;
                     state := STARTING;
                 end;
@@ -131,11 +160,11 @@ end;
 
 
 var
-   s : TSimple;
+   app : TembeddedApp;
 
-(*MAIN*)
+// main
 begin
-    s.run;
+    app.run;
 end.
 
 

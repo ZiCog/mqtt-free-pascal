@@ -122,7 +122,6 @@ begin
                 { Check errors }
                 if FPSocket^.LastError <> 0 then
                 begin
-                    writeln ('Error: 1:');
                     rxState := 3;
                 end;
                 remainingLength := (digit and 127) * multiplier;
@@ -143,7 +142,6 @@ begin
                 { Check errors }
                 if FPSocket^.LastError <> 0 then
                 begin
-                    writeln ('Error: 2:');
                     rxState := 3;
                 end;
                 Synchronize(@HandleData);
@@ -155,7 +153,6 @@ begin
             end;
         end;
     end;
-    writeln ('TERMINATED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
 end;
 
 procedure TMQTTReadThread.HandleData;
