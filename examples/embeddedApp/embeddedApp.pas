@@ -1,3 +1,4 @@
+
 {
  -------------------------------------------------
   embeddedApp.pas -  An example of using the MQTT Client from a command line program
@@ -29,143 +30,146 @@
    -------------------------------------------------
 }
 
-program embeddedApp;
+Program embeddedApp;
 
 // cthreads is required to get the MQTTReadThread working.
-uses  cthreads, Classes, MQTT, sysutils;
+
+Uses  cthreads, Classes, MQTT, sysutils;
 
 // The major states of the application.
-type TembeddedAppStates = (
-          STARTING,
-          RUNNING,
-          FAILING
-        );
-type
-   // Define class for the embedded application
-   // The MQTT callbacks must be methods of an object not stanalone procedures.
-   TembeddedApp = object
-        MQTTClient: TMQTTClient;
-        pingCounter : integer;
-        pingTimer : integer;
-        state : TembeddedAppStates;
-        procedure run ();
-        procedure OnConnAck(Sender: TObject; ReturnCode: longint);
-        procedure OnPingResp(Sender: TObject);
-        procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
-        procedure OnUnSubAck(Sender: TObject);
-        procedure OnPublish(Sender: TObject; topic, payload: string);
-end;
 
-procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
-begin
-  writeln ('Connection Acknowledged, Return Code: ' + IntToStr(Ord(ReturnCode))); 
-end;
+Type TembeddedAppStates = (
+                           STARTING,
+                           RUNNING,
+                           FAILING
+                          );
 
-procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: string);
-begin
+Type 
+  // Define class for the embedded application
+  // The MQTT callbacks must be methods of an object not stanalone procedures.
+  TembeddedApp = Object
+    MQTTClient: TMQTTClient;
+    pingCounter : integer;
+    pingTimer : integer;
+    state : TembeddedAppStates;
+    Procedure run ();
+    Procedure OnConnAck(Sender: TObject; ReturnCode: longint);
+    Procedure OnPingResp(Sender: TObject);
+    Procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
+    Procedure OnUnSubAck(Sender: TObject);
+    Procedure OnPublish(Sender: TObject; topic, payload: String);
+  End;
+
+Procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
+Begin
+  writeln ('Connection Acknowledged, Return Code: ' + IntToStr(Ord(ReturnCode)));
+End;
+
+Procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: String);
+Begin
   writeln ('Publish Received. Topic: '+ topic + ' Payload: ' + payload);
-end;
+End;
 
-procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
-begin
+Procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
+Begin
   writeln ('Sub Ack Received');
-end;
+End;
 
-procedure TembeddedApp.OnUnSubAck(Sender: TObject);
-begin
+Procedure TembeddedApp.OnUnSubAck(Sender: TObject);
+Begin
   writeln ('Unsubscribe Ack Received');
-end;
+End;
 
-procedure TembeddedApp.OnPingResp(Sender: TObject);
-begin
+Procedure TembeddedApp.OnPingResp(Sender: TObject);
+Begin
   writeln ('PING! PONG!');
   // Reset ping counter to indicate all is OK.
   pingCounter := 0;
-end;
+End;
 
-procedure TembeddedApp.run();
-begin
-    writeln ('embeddedApp MQTT Client.');
-    state := STARTING;
+Procedure TembeddedApp.run();
+Begin
+  writeln ('embeddedApp MQTT Client.');
+  state := STARTING;
 
-    MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
+  MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
 
-    // Setup callback handlers
-    MQTTClient.OnConnAck := @OnConnAck;
-    MQTTClient.OnPingResp := @OnPingResp;
-    MQTTClient.OnPublish := @OnPublish;
-    MQTTClient.OnSubAck := @OnSubAck;
+  // Setup callback handlers
+  MQTTClient.OnConnAck := @OnConnAck;
+  MQTTClient.OnPingResp := @OnPingResp;
+  MQTTClient.OnPublish := @OnPublish;
+  MQTTClient.OnSubAck := @OnSubAck;
 
-    while true do
-    begin
-        case state of
-            STARTING : begin
-                    // Connect to MQTT server
-                    writeln('STARTING...');
-                    pingCounter := 0;
-                    pingTimer := 0;
-                    if MQTTClient.Connect then
-                    begin
-                        // Make subscriptions
-                        MQTTClient.Subscribe('/rsm.ie/#');
-                        state := RUNNING;
-                    end
-                    else
-                    begin
-                        state := FAILING
-                    end;
-                end;
-            RUNNING : begin
+  While true Do
+    Begin
+      Case state Of 
+        STARTING :
+                   Begin
+                     // Connect to MQTT server
+                     writeln('STARTING...');
+                     pingCounter := 0;
+                     pingTimer := 0;
+                     If MQTTClient.Connect Then
+                       Begin
+                         // Make subscriptions
+                         MQTTClient.Subscribe('/rsm.ie/#');
+                         state := RUNNING;
+                       End
+                     Else
+                       Begin
+                         state := FAILING
+                       End;
+                   End;
+        RUNNING :
+                  Begin
                     // Publish stuff
-                    if not MQTTClient.Publish('/rsm.ie/fits/detectors', '0101000101000111') then
-                    begin
-                        state := FAILING; 
-                    end;
+                    If Not MQTTClient.Publish('/rsm.ie/fits/detectors', '0101000101000111') Then
+                      Begin
+                        state := FAILING;
+                      End;
 
                     // Ping the MQTT server occasionally 
-                    if (pingTimer mod 10) = 0 then
-                    begin
-                        if not MQTTClient.PingReq then
-                        begin
+                    If (pingTimer Mod 10) = 0 Then
+                      Begin
+                        If Not MQTTClient.PingReq Then
+                          Begin
                             state := FAILING;
-                        end
-                        else
-                        begin
+                          End
+                        Else
+                          Begin
                             pingCounter := pingCounter + 1;
-                        end;
+                          End;
                         // Check that pings are being answered
-                        if pingCounter > 3 then
-                        begin
+                        If pingCounter > 3 Then
+                          Begin
                             writeln ('Pings unanswered');
                             state := FAILING;
-                        end;
-                    end;
+                          End;
+                      End;
                     pingTimer := pingTimer + 1;
 
-                end; 
-            FAILING : begin
+                  End;
+        FAILING :
+                  Begin
                     writeln('FAILING...');
                     MQTTClient.ForceDisconnect;
                     state := STARTING;
-                end;
-        end;
- 
-        { Synch with threads }
-        CheckSynchronize(0);
+                  End;
+      End;
 
-        { Yawn }
-        sleep(1000);
-   end;
-end;
+      // Synch with MQTT Reader Thread
+      CheckSynchronize(0);
 
-
-var
-   app : TembeddedApp;
-
-// main
-begin
-    app.run;
-end.
+      // Yawn.
+      sleep(1000);
+    End;
+End;
 
 
+Var 
+  app : TembeddedApp;
 
+  // main
+Begin
+  app.run;
+End.
