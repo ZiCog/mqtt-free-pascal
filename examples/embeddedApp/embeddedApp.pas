@@ -48,16 +48,18 @@ Type
   // Define class for the embedded application
   // The MQTT callbacks must be methods of an object not stanalone procedures.
   TembeddedApp = Object
+strict private
     MQTTClient: TMQTTClient;
     pingCounter : integer;
     pingTimer : integer;
     state : TembeddedAppStates;
-    Procedure run ();
     Procedure OnConnAck(Sender: TObject; ReturnCode: longint);
     Procedure OnPingResp(Sender: TObject);
     Procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
     Procedure OnUnSubAck(Sender: TObject);
     Procedure OnPublish(Sender: TObject; topic, payload: String);
+public
+    Procedure run ();
   End;
 
 Procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
