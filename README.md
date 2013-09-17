@@ -19,18 +19,15 @@ this in an embedded system with no display.
 To build the demo:
 ------------------
 
-$ fpc simple.pas
+$ cd examples/embeddedApp
+$ ./build
 
 
-Running simple.pas out of the box reqires you have access to test.mosquitto.org.
+Running embeddedApp out of the box reqires you have access to test.mosquitto.org.
 
 TODO
 ----
 
-1) This uses {$mode delphi} in order to get it to compile under FPC. Perhaps should look at
-removing that and fixing the code accordingly.
-
-2) Add ping and other features to the demo.
 
 
 
