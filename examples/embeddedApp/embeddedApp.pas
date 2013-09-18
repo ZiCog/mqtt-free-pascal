@@ -53,6 +53,8 @@ strict private
     pingCounter : integer;
     pingTimer : integer;
     state : TembeddedAppStates;
+    message : string;
+    pubTimer : integer;
     Procedure OnConnAck(Sender: TObject; ReturnCode: longint);
     Procedure OnPingResp(Sender: TObject);
     Procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
@@ -94,6 +96,26 @@ Begin
   writeln ('embeddedApp MQTT Client.');
   state := STARTING;
 
+  message := '0123456789' +
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789' + 
+             '0123456789:'; 
+
   MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
 
   // Setup callback handlers
@@ -111,6 +133,7 @@ Begin
                      writeln('STARTING...');
                      pingCounter := 0;
                      pingTimer := 0;
+                     pubTimer := 50;
                      If MQTTClient.Connect Then
                        Begin
                          // Make subscriptions
@@ -124,14 +147,20 @@ Begin
                    End;
         RUNNING :
                   Begin
+{
                     // Publish stuff
-                    If Not MQTTClient.Publish('/rsm.ie/fits/detectors', '0101000101000111') Then
-                      Begin
-                        state := FAILING;
-                      End;
+                    If (pubTimer Mod 100) = 0 Then
+                    begin
+                        If Not MQTTClient.Publish('/rsm.ie/fits/detectors', message) Then
+                          Begin
+                            state := FAILING;
+                          End;
+                    end;
+                    pubTimer := pubTimer + 1;
+}
 
                     // Ping the MQTT server occasionally 
-                    If (pingTimer Mod 10) = 0 Then
+                    If (pingTimer Mod 1000) = 0 Then
                       Begin
                         If Not MQTTClient.PingReq Then
                           Begin
@@ -163,7 +192,7 @@ Begin
       CheckSynchronize(0);
 
       // Yawn.
-      sleep(1000);
+      sleep(10);
     End;
 End;
 

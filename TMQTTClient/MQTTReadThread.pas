@@ -106,49 +106,89 @@ begin
         case rxState of
         0 : begin
                 { Read fixed header byte }
+                writeln('Sate: 0');
                 multiplier := 1;
+                remainingLength := 0;
                 CurrentMessage.Data := nil;
+                CurrentMessage.FixedHeader := 0;
                 CurrentMessage.FixedHeader := FPSocket^.RecvByte(1000);
                 { Check errors }
-                if FPSocket^.LastError <> 0 then
+                if (FPSocket^.LastError = 110) then
                 begin
-                    rxState := 3;
-                end;
-                rxState := 1;
-            end;
-        1 : begin
-                { Read length bytes }
-                digit := FPSocket^.RecvByte(1000);
-                { Check errors }
-                if FPSocket^.LastError <> 0 then
-                begin
-                    rxState := 3;
-                end;
-                remainingLength := (digit and 127) * multiplier;
-                if (digit and 128) > 0 then
-                begin
-                    multiplier := multiplier * 128;
-                    rxState := 1;
+                        writeln('Timeout:');
+                        rxState := 0;
                 end
                 else
                 begin
-                    rxState := 2;
+                    if (FPSocket^.LastError <> 0) then
+                    begin
+                        write('Socket erro: ');
+                        writeln(FPSocket^.LastError);
+                        rxState := 3;
+                    end
+                    else
+                    begin
+                        rxState := 1;
+                    end;
+                end;
+            end;
+        1 : begin
+                writeln('Sate: 1');
+                { Read length bytes }
+                digit := FPSocket^.RecvByte(1000);
+                { Check errors }
+                if (FPSocket^.LastError = 110) then
+                begin
+                        writeln('Timeout:');
+                        rxState := 1;
+                end
+                else
+                begin
+                    if (FPSocket^.LastError <> 0) then
+                    begin
+                       write ('Last error = ');
+                       writeln(FPSocket^.LastError);
+                       rxState := 3;
+                    end
+                    else
+                    begin
+                        remainingLength := remainingLength + (digit and 127) * multiplier;
+                        if (digit and 128) > 0 then
+                        begin
+                            multiplier := multiplier * 128;
+                            rxState := 1;
+                        end
+                        else
+                        begin
+                            rxState := 2;
+                        end;
+                   end;
                 end;
             end;
         2 : begin
+                writeln('Sate: 2');
                 { Read data bytes }
                 SetLength(CurrentMessage.Data, remainingLength);
                 FPSocket^.RecvBufferEx(Pointer(CurrentMessage.Data), remainingLength, 1000);
+                
+                write ('Data length = ');
+                writeln (length (CurrentMessage.Data));
+
                 { Check errors }
-                if FPSocket^.LastError <> 0 then
+                if (FPSocket^.LastError <> 0) then
                 begin
                     rxState := 3;
+                end
+                else
+                begin
+                    Synchronize(@HandleData);
+                    rxState := 0;
                 end;
-                Synchronize(@HandleData);
-                rxState := 0;
             end;
         3 : begin
                 { Error }
+                writeln('Sate: 3');
+                sleep(50000);
                 rxState := 0;
             end;
         end;
