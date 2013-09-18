@@ -9,12 +9,14 @@ Changes:
 --------
 
 1) Rewrote the reader thread loop so as to make it simpler and faster also fixes a bug whereby the
-client would segfault if the server went down.
+client would segfault if the server went down and a major bug where timeouts on rx would cause data corruption.
 
 2) Replaced the original client demo code with a simpler demo that does not use forms. I am using
 this in an embedded system with no display.
 
-3) Also includes the parts of Ararat Synapse required to build.
+3) Changed all strings to ansi strings so that it can have topics and payloads longer than 255 bytes. 
+
+4) Also includes the parts of Ararat Synapse required to build.
 
 To build the demo:
 ------------------

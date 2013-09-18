@@ -59,7 +59,7 @@ strict private
     Procedure OnPingResp(Sender: TObject);
     Procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
     Procedure OnUnSubAck(Sender: TObject);
-    Procedure OnPublish(Sender: TObject; topic, payload: String);
+    Procedure OnPublish(Sender: TObject; topic, payload: ansistring);
 public
     Procedure run ();
   End;
@@ -69,7 +69,7 @@ Begin
   writeln ('Connection Acknowledged, Return Code: ' + IntToStr(Ord(ReturnCode)));
 End;
 
-Procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: String);
+Procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: ansistring);
 Begin
   writeln ('Publish Received. Topic: '+ topic + ' Payload: ' + payload);
 End;

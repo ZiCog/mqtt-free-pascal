@@ -50,7 +50,7 @@ Type TRxStates = (RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
   PTCPBlockSocket = ^TTCPBlockSocket;
 
   TConnAckEvent = procedure (Sender: TObject; ReturnCode: integer) of object;
-  TPublishEvent = procedure (Sender: TObject; topic, payload: string) of object;
+  TPublishEvent = procedure (Sender: TObject; topic, payload: ansistring) of object;
   TPingRespEvent = procedure (Sender: TObject) of object;
   TSubAckEvent = procedure (Sender: TObject; MessageID: integer; GrantedQoS: integer) of object;
   TUnSubAckEvent = procedure (Sender: TObject; MessageID: integer) of object;
@@ -67,7 +67,7 @@ Type TRxStates = (RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     FUnSubAckEvent: TUnSubAckEvent;
     // This takes a 1-4 Byte Remaining Length bytes as per the spec and returns the Length value it represents
     // Increases the size of the Dest array and Appends NewBytes to the end of DestArray 
-    // Takes a 2 Byte Length array and returns the length of the string it preceeds as per the spec.
+    // Takes a 2 Byte Length array and returns the length of the ansistring it preceeds as per the spec.
     function BytesToStrLength(LengthBytes: TBytes): integer;
     // This is our data processing and event firing command. To be called via Synchronize.
     procedure HandleData;
@@ -158,8 +158,8 @@ var
   MessageType: Byte;
   DataLen: integer;
   QoS: integer;
-  Topic: string;
-  Payload: string;
+  Topic: ansistring;
+  Payload: ansistring;
   ResponseVH: TBytes;
   ConnectReturn: Integer;
 begin
