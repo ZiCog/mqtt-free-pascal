@@ -33,7 +33,7 @@ unit MQTTReadThread;
 interface
 
 uses
-  SysUtils, Classes, blcksock;
+  SysUtils, Classes, blcksock, BaseUnix;
 
 type TBytes = array of Byte;
 
@@ -43,6 +43,9 @@ type
     RL: TBytes;
     Data: TBytes;
   End;
+
+Type TRxStates = (RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
+
 
   PTCPBlockSocket = ^TTCPBlockSocket;
 
@@ -95,101 +98,56 @@ end;
 
 procedure TMQTTReadThread.Execute;
 var
-  rxState: integer;
+  rxState: TRxStates;
   remainingLength: integer;
   digit: integer;
   multiplier: integer;
 begin
-  rxState := 0;
+  rxState := RX_FIXED_HEADER;
   while not Terminated do
     begin
         case rxState of
-        0 : begin
-                { Read fixed header byte }
-                writeln('Sate: 0');
+        RX_FIXED_HEADER: begin
                 multiplier := 1;
                 remainingLength := 0;
                 CurrentMessage.Data := nil;
-                CurrentMessage.FixedHeader := 0;
                 CurrentMessage.FixedHeader := FPSocket^.RecvByte(1000);
-                { Check errors }
-                if (FPSocket^.LastError = 110) then
-                begin
-                        writeln('Timeout:');
-                        rxState := 0;
-                end
+                if (FPSocket^.LastError = ESysETIMEDOUT) then continue;
+                if (FPSocket^.LastError <> 0) then
+                  rxState := RX_ERROR
                 else
-                begin
-                    if (FPSocket^.LastError <> 0) then
-                    begin
-                        write('Socket erro: ');
-                        writeln(FPSocket^.LastError);
-                        rxState := 3;
-                    end
-                    else
-                    begin
-                        rxState := 1;
-                    end;
-                end;
+                  rxState := RX_LENGTH;
             end;
-        1 : begin
-                writeln('Sate: 1');
-                { Read length bytes }
+        RX_LENGTH: begin
                 digit := FPSocket^.RecvByte(1000);
-                { Check errors }
-                if (FPSocket^.LastError = 110) then
-                begin
-                        writeln('Timeout:');
-                        rxState := 1;
-                end
+                if (FPSocket^.LastError = ESysETIMEDOUT) then continue;
+                if (FPSocket^.LastError <> 0) then
+                  rxState := RX_ERROR
                 else
                 begin
-                    if (FPSocket^.LastError <> 0) then
-                    begin
-                       write ('Last error = ');
-                       writeln(FPSocket^.LastError);
-                       rxState := 3;
-                    end
-                    else
-                    begin
-                        remainingLength := remainingLength + (digit and 127) * multiplier;
-                        if (digit and 128) > 0 then
-                        begin
-                            multiplier := multiplier * 128;
-                            rxState := 1;
-                        end
-                        else
-                        begin
-                            rxState := 2;
-                        end;
-                   end;
+                  remainingLength := remainingLength + (digit and 127) * multiplier;
+                  if (digit and 128) > 0 then
+                  begin
+                    multiplier := multiplier * 128;
+                    rxState := RX_LENGTH;
+                  end
+                  else
+                    rxState := RX_DATA;
                 end;
             end;
-        2 : begin
-                writeln('Sate: 2');
-                { Read data bytes }
+        RX_DATA: begin
                 SetLength(CurrentMessage.Data, remainingLength);
                 FPSocket^.RecvBufferEx(Pointer(CurrentMessage.Data), remainingLength, 1000);
-                
-                write ('Data length = ');
-                writeln (length (CurrentMessage.Data));
-
-                { Check errors }
                 if (FPSocket^.LastError <> 0) then
-                begin
-                    rxState := 3;
-                end
+                  rxState := RX_ERROR
                 else
                 begin
-                    Synchronize(@HandleData);
-                    rxState := 0;
+                  Synchronize(@HandleData);
+                  rxState := RX_FIXED_HEADER;
                 end;
             end;
-        3 : begin
-                { Error }
-                writeln('Sate: 3');
-                sleep(50000);
-                rxState := 0;
+        RX_ERROR: begin
+                sleep(1000);
             end;
         end;
     end;
