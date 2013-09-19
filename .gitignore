@@ -10,4 +10,5 @@ __history
 bin/*
 *.o
 *.ppu
+*.*~
 examples/embeddedApp/embeddedApp
