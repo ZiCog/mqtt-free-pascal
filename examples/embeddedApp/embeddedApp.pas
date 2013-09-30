@@ -103,7 +103,7 @@ type
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
-      MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
+      MQTTClient := TMQTTClient.Create('localhost', 1883);
 
       // Setup callback handlers
       MQTTClient.OnConnAck := @OnConnAck;
@@ -124,7 +124,7 @@ type
                          if MQTTClient.Connect then
                            begin
                              // Make subscriptions
-                             MQTTClient.Subscribe('/jack/says/#');
+                             MQTTClient.Subscribe('/rsm.ie/fits/detectors');
                              state := RUNNING;
                            end
                          else
