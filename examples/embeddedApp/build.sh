@@ -2,7 +2,7 @@
 
 # Build the embeddedApp MQTT client example. 
 
-fpc embeddedApp.pas -Fu../../TMQTTClient/ -Fu../../synapse 
+fpc -O3 -Or embeddedApp.pas -Fu../../TMQTTClient/ -Fu../../synapse 
 
 
 
