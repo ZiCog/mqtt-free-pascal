@@ -41,7 +41,7 @@ uses
 type
   //  Message type. 4 Bit unsigned.
   TMQTTMessageType = (
-          Reserved0,	//0	Reserved
+          Reserved0, //0	Reserved
           CONNECT, //	1	Client request to connect to Broker
           CONNACK, //	2	Connect Acknowledgment
           PUBLISH, //	3	Publish message
@@ -275,7 +275,7 @@ end;
 ------------------------------------------------------------------------------*}
 function TMQTTClient.Publish(Topic, sPayload: ansistring): boolean;
 begin
-  Publish(Topic, sPayload, False);
+  Result := Publish(Topic, sPayload, False);
 end;
 
 {*------------------------------------------------------------------------------
