@@ -103,7 +103,7 @@ type
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
-      MQTTClient := TMQTTClient.Create('localhost', 1883);
+      MQTTClient := TMQTTClient.Create('www.google.com', 1883);
 
       // Setup callback handlers
       MQTTClient.OnConnAck := @OnConnAck;
@@ -113,6 +113,7 @@ type
 
       while true do
         begin
+	Writeln('System:time:', TimeStampToMSecs(DateTimeToTimeStamp(Now)));
           case state of 
             STARTING :
                        begin
@@ -176,7 +177,7 @@ type
           CheckSynchronize(0);
 
           // Yawn.
-          sleep(100);
+          sleep(50);
         end;
     end;
 
