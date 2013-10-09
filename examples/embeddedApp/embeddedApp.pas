@@ -41,7 +41,8 @@ uses  cthreads, Classes, MQTT, sysutils;
 // The major states of the application.
 
 type TembeddedAppStates = (
-                           STARTING,
+                           CONNECT,
+                           WAIT_CONNECT,
                            RUNNING,
                            FAILING
                           );
@@ -58,6 +59,7 @@ type
       state : TembeddedAppStates;
       message : ansistring;
       pubTimer : integer;
+      connectTimer : integer;
       procedure OnConnAck(Sender: TObject; ReturnCode: longint);
       procedure OnPingResp(Sender: TObject);
       procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
@@ -70,6 +72,10 @@ type
     procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
     begin
       writeln ('Connection Acknowledged, Return Code: ' + IntToStr(Ord(ReturnCode)));
+      // Make subscriptions
+      MQTTClient.Subscribe('/rsm.ie/fits/detectors');
+      // Enter the running state
+      state := RUNNING;
     end;
 
     procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: ansistring);
@@ -79,7 +85,9 @@ type
 
     procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
     begin
+      writeln ('################################################################################');
       writeln ('Sub Ack Received');
+      writeln ('################################################################################');
     end;
 
     procedure TembeddedApp.OnUnSubAck(Sender: TObject);
@@ -97,13 +105,14 @@ type
     procedure TembeddedApp.run();
     begin
       writeln ('embeddedApp MQTT Client.');
-      state := STARTING;
+      state := CONNECT;
 
       message := 
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
-      MQTTClient := TMQTTClient.Create('www.google.com', 1883);
+     //MQTTClient := TMQTTClient.Create('www.google.com', 1883);
+     MQTTClient := TMQTTClient.Create('www.mosquitto.org', 1883);
 
       // Setup callback handlers
       MQTTClient.OnConnAck := @OnConnAck;
@@ -113,49 +122,63 @@ type
 
       while true do
         begin
-	Writeln('System:time:', TimeStampToMSecs(DateTimeToTimeStamp(Now)));
+          Writeln('Embedded app running:', TimeStampToMSecs(DateTimeToTimeStamp(Now)));
           case state of 
-            STARTING :
+            CONNECT :
                        begin
                          // Connect to MQTT server
-                         writeln('STARTING...');
+                         writeln('CONNECTING...');
                          pingCounter := 0;
                          pingTimer := 0;
-                         pubTimer := 50;
+                         pubTimer := 0;
+                         connectTimer := 0;
                          if MQTTClient.Connect then
                            begin
-                             // Make subscriptions
-                             MQTTClient.Subscribe('/rsm.ie/fits/detectors');
-                             state := RUNNING;
+                             Writeln('!!!!!!!!!!!!!! CONNECT OK !!!!!!!!!!!!');
+                             state := WAIT_CONNECT;
                            end
                          else
                            begin
+                             Writeln('!!!!!!!!!!!!!! CONNECT FAILED !!!!!!!!!!!!');
                              state := FAILING
                            end;
                        end;
+            WAIT_CONNECT :
+                       begin
+                             // Can only move to RUNNING state on recieving ConnAck 
+                             connectTimer := connectTimer + 1;
+                             if connectTimer > 10 then
+                               state := FAILING; 
+                       end;
             RUNNING :
                       begin
+
                         // Publish stuff
                         if pubTimer mod 10 = 0 then
                           begin
-                            if not MQTTClient.Publish('/jack/says/', message) then
+                            if MQTTClient.Publish('/jack/says/', message) then
                               begin
-                                state := FAILING;
+                                writeln ('------------------ PUBLISH OK ----------------------');
+                              end
+                            else
+                              begin
+                                writeln ('!!!!!!!!!!!!!!!!!! PUBLISH FAILED !!!!!!!!!!!!!!!!!!');
+                                //state := FAILING;
                               end;
                           end;
                         pubTimer := pubTimer + 1;
 
                         // Ping the MQTT server occasionally 
-                        if (pingTimer mod 100) = 0 then
+                        if (pingTimer mod 10) = 0 then
                           begin
+                            // Time to PING !
                             if not MQTTClient.PingReq then
                               begin
-                                state := FAILING;
-                              end
-                            else
-                              begin
-                                pingCounter := pingCounter + 1;
+                                Writeln('!!!!!!!!!!!!!! Ping send failed !!!!!!!!!!!!');
+                                  state := FAILING;
+                                  sleep(1000);
                               end;
+                            pingCounter := pingCounter + 1;
                             // Check that pings are being answered
                             if pingCounter > 3 then
                               begin
@@ -169,7 +192,7 @@ type
                       begin
                         writeln('FAILING...');
                         MQTTClient.ForceDisconnect;
-                        state := STARTING;
+                        state := CONNECT;
                       end;
           end;
 
@@ -177,7 +200,7 @@ type
           CheckSynchronize(0);
 
           // Yawn.
-          sleep(50);
+          sleep(100);
         end;
     end;
 

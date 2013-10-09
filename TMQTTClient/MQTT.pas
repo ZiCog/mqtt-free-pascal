@@ -138,41 +138,24 @@ implementation
   @return Returns whether the Data was written successfully to the socket.
 ------------------------------------------------------------------------------*}
 function TMQTTClient.Connect: boolean;
-var
-  Data: TBytes;
-  RL: TRemainingLength;
-  VH: TBytes;
-  FH: Byte;
-  Payload: TUTF8Text;
 begin
   Result := False;
 
   if FSocket = nil then
     begin
-      FH := FixedHeader(MQTT.CONNECT, 0, 0, 0);
-      VH := VariableHeaderConnect(40);
-      SetLength(Payload, 0);
-      AppendArray(Payload, StrToBytes(FClientID, true));
-      AppendArray(Payload, StrToBytes('lwt', true));
-      AppendArray(Payload, StrToBytes(FClientID + ' died', true));
-      RL := RemainingLength(Length(VH) + Length(Payload));
-      Data := BuildCommand(FH, RL, VH, Payload);
 
-      // Now to Connect the Socket and send the Data.
+      // Create a socket.
       FSocket := TTCPBlockSocket.Create;
-      FSocket.Connect(Self.FHostname, IntToStr(Self.FPort));
-      FisConnected := True;
-      if SocketWrite(Data) then
-      begin
-        Result := True;
-        FReadThread := TMQTTReadThread.Create(@FSocket);
-        FReadThread.OnConnAck := @Self.OnRTConnAck;
-        FReadThread.OnPublish := @Self.OnRTPublish;
-        FReadThread.OnPingResp := @Self.OnRTPingResp;
-        FReadThread.OnSubAck := @Self.OnRTSubAck;
-        FReadThread.Resume;
-      end else Result := False;
+
+      // Create and start RX thread
+      FReadThread := TMQTTReadThread.Create(@FSocket);
+      FReadThread.OnConnAck := @Self.OnRTConnAck;
+      FReadThread.OnPublish := @Self.OnRTPublish;
+      FReadThread.OnPingResp := @Self.OnRTPingResp;
+      FReadThread.OnSubAck := @Self.OnRTSubAck;
+      FReadThread.Start;
     end;
+    Result := True;
 end;
 
 {*------------------------------------------------------------------------------
@@ -542,6 +525,12 @@ end;
 
 procedure TMQTTClient.OnRTConnAck(Sender: TObject; ReturnCode: integer);
 begin
+//????
+  writeln ('-------------TMQTTClient.OnRTConnAck ReteurnCode = ', ReturnCode);
+  if ReturnCode = 0 then
+    begin
+      FisConnected := true;
+    end;
   if Assigned(OnConnAck) then OnConnAck(Self, ReturnCode);
 end;
 
