@@ -71,10 +71,15 @@ type
     procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
     begin
       writeln ('OnConnAck: Return Code = ' + IntToStr(Ord(ReturnCode)));
-      // Make subscriptions
-      MQTTClient.Subscribe('/rsm.ie/fits/detectors');
-      // Enter the running state
-      state := RUNNING;
+      if ReturnCode = 0 then
+        begin
+          // Make subscriptions
+          MQTTClient.Subscribe('/rsm.ie/fits/detectors');
+          // Enter the running state
+          state := RUNNING;
+        end
+      else
+        state := FAILING;
     end;
 
     procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: ansistring);
@@ -153,12 +158,10 @@ type
                         // Publish stuff
                         if pubTimer mod 10 = 0 then
                           begin
-                            if MQTTClient.Publish('/jack/says/', message) then
-                              begin
-                              end
-                            else
+                            if not MQTTClient.Publish('/jack/says/', message) then
                               begin
                                 writeln ('embeddedApp: Error: Publish Failed.');
+                                 state := FAILING;
                               end;
                           end;
                         pubTimer := pubTimer + 1;
