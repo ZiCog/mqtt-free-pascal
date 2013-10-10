@@ -188,7 +188,7 @@ type
       Result := False;
 
       SetLength(Data, 2);
-      Data[0] := FixedHeader(TMQTTMessageType.DISCONNECT, 0, 0, 0);
+      Data[0] := FixedHeader(MQTT.DISCONNECT, 0, 0, 0);
       Data[1] := 0;
       if SocketWrite(Data) then
         begin
@@ -237,7 +237,7 @@ type
       Result := False;
 
       SetLength(Data, 2);
-      FH := FixedHeader(TMQTTMessageType.PINGREQ, 0, 0, 0);
+      FH := FixedHeader(MQTT.PINGREQ, 0, 0, 0);
       RL := 0;
       Data[0] := FH;
       Data[1] := RL;
@@ -265,7 +265,7 @@ type
     begin
       Result := False;
 
-      FH := FixedHeader(TMQTTMessageType.PUBLISH, 0, 0, Ord(Retain));
+      FH := FixedHeader(MQTT.PUBLISH, 0, 0, Ord(Retain));
       VH := VariableHeaderPublish(Topic);
       SetLength(Payload, 0);
       AppendArray(Payload, StrToBytes(sPayload, false));
@@ -305,7 +305,7 @@ type
       VH: TBytes;
       Payload: TUTF8Text;
     begin
-      FH := FixedHeader(TMQTTMessageType.SUBSCRIBE, 0, 1, 0);
+      FH := FixedHeader(MQTT.SUBSCRIBE, 0, 1, 0);
       VH := VariableHeaderSubscribe;
       Result := (FMessageID - 1);
       SetLength(Payload, 0);
@@ -336,7 +336,7 @@ type
       VH: TBytes;
       Payload: TUTF8Text;
     begin
-      FH := FixedHeader(TMQTTMessageType.UNSUBSCRIBE, 0, 0, 0);
+      FH := FixedHeader(MQTT.UNSUBSCRIBE, 0, 0, 0);
       VH := VariableHeaderUnsubscribe;
       Result := (FMessageID - 1);
       SetLength(Payload, 0);
