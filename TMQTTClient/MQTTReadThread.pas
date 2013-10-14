@@ -1,4 +1,6 @@
 
+
+
 {
  -------------------------------------------------
   MQTTReadThread.pas -  Contains the socket receiving thread that is part of the
@@ -75,7 +77,9 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       FSubAckEvent: TSubAckEvent;
       FUnSubAckEvent: TUnSubAckEvent;
 
-      // Takes a 2 Byte Length array and returns the length of the ansistring it preceeds as per the spec.
+
+
+// Takes a 2 Byte Length array and returns the length of the ansistring it preceeds as per the spec.
       function BytesToStrLength(LengthBytes: TBytes): integer;
       // This is our data processing and event firing command. To be called via Synchronize.
       procedure HandleData;
@@ -107,7 +111,9 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     begin
       inherited Create(true);
 
-      // Create a Default ClientID as a default. Can be overridden with TMQTTClient.ClientID any time before connection.
+
+
+// Create a Default ClientID as a default. Can be overridden with TMQTTClient.ClientID any time before connection.
       FClientID := 'dMQTTClientx' + IntToStr(Random(1000) + 1);
       FPSocket := Socket;
       FHostname := Hostname;
@@ -202,8 +208,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                      end;
             RX_ERROR:
                       begin
-                        // We hang up here. 
-                        sleep(1000);
+                        // Quit the loop, terminating the thread. 
+                        break;
                       end;
           end;
         end;
@@ -280,7 +286,9 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     function TMQTTReadThread.BytesToStrLength(LengthBytes: TBytes): integer;
     begin
       Assert(Length(LengthBytes) = 2,
-                                  'TMQTTReadThread: UTF-8 Length Bytes preceeding the text must be 2 Bytes in Legnth'
+
+
+                 'TMQTTReadThread: UTF-8 Length Bytes preceeding the text must be 2 Bytes in Legnth'
                                    );
 
       Result := 0;
@@ -297,7 +305,9 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       // Returns whether the Data was successfully written to the socket.
       //  if isConnected then
       //  begin
+
       sentData := FPSocket^.SendBuffer(Pointer(Data), Length(Data));
+      writeln('SocketWrite (RX): ', FPSocket^.LastErrorDesc, ': ', FPSocket^.LastError);
       if sentData = Length(Data) then Result := True
       else Result := False;
       //  end;

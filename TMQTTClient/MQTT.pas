@@ -1,4 +1,6 @@
 
+
+
 {
  -------------------------------------------------
   MQTT.pas -  A Library for Publishing and Subscribing to messages from an MQTT Message
@@ -75,6 +77,7 @@ type
       FSocket: TTCPBlockSocket;
       FMessageID: integer;
       FisConnected: boolean;
+      FReaderThreadRunning: boolean;
 
       FConnAckEvent: TConnAckEvent;
       FPublishEvent: TPublishEvent;
@@ -95,9 +98,10 @@ type
       procedure OnRTSubAck(Sender: TObject; MessageID: integer; GrantedQoS: integer);
       procedure OnRTUnSubAck(Sender: TObject; MessageID: integer);
       procedure OnRTPublish(Sender: TObject; topic, payload: ansistring);
+      procedure OnRTTerminate (Sender: TObject);
     public 
       function isConnected: boolean;
-      function Connect: boolean;
+      procedure Connect;
       function Disconnect: boolean;
       procedure ForceDisconnect;
       function Publish(Topic: ansistring; sPayload: ansistring): boolean;
@@ -136,6 +140,7 @@ type
     procedure AppendArray(var Dest: TUTF8Text; Source: array of Byte);
 
 
+
    // Helper Function - Puts the seperate component together into an Array of Bytes for transmission
     function BuildCommand(FixedHead: Byte; RemainL: TRemainingLength; VariableHead: TBytes; Payload:
                           array of Byte): TBytes;
@@ -149,30 +154,38 @@ type
 { TMQTTClient }
 
 
+
+
 {*------------------------------------------------------------------------------
   Instructs the Client to try to connect to the server at TMQTTClient.Hostname and
   TMQTTClient.Port and then to send the initial CONNECT message as required by the
   protocol. Check for a CONACK message to verify successful connection.
-  @return Returns whether the Data was written successfully to the socket.
 ------------------------------------------------------------------------------*}
-    function TMQTTClient.Connect: boolean;
+    procedure TMQTTClient.Connect;
     begin
-      if FSocket = nil then
+      if FReaderThreadRunning = false then
         begin
+          if FSocket = nil then
+            begin
 
-          // Create a socket.
-          FSocket := TTCPBlockSocket.Create;
+              // Create a socket.
+              FSocket := TTCPBlockSocket.Create;
 
-          // Create and start RX thread
-          FReadThread := TMQTTReadThread.Create(@FSocket, FHostname, FPort);
-          FReadThread.OnConnAck := @OnRTConnAck;
-          FReadThread.OnPublish := @OnRTPublish;
-          FReadThread.OnPingResp := @OnRTPingResp;
-          FReadThread.OnSubAck := @OnRTSubAck;
-          FReadThread.Start;
+              // Create and start RX thread
+              FReadThread := TMQTTReadThread.Create(@FSocket, FHostname, FPort);
+              FReadThread.OnConnAck := @OnRTConnAck;
+              FReadThread.OnPublish := @OnRTPublish;
+              FReadThread.OnPingResp := @OnRTPingResp;
+              FReadThread.OnSubAck := @OnRTSubAck;
+              FReadThread.OnTerminate := @OnRTTerminate;
+              FReadThread.Start;
+              writeln('STARTED:');
+              FReaderThreadRunning := true;
+            end;
         end;
-      Result := True;
     end;
+
+
 
 
 {*------------------------------------------------------------------------------
@@ -202,6 +215,8 @@ type
     end;
 
 
+
+
 {*------------------------------------------------------------------------------
   Terminate the reader thread and close the socket forcibly.
 ------------------------------------------------------------------------------*}
@@ -220,6 +235,17 @@ type
         end;
       FisConnected := False;
     end;
+
+
+
+{*------------------------------------------------------------------------------
+  Call back for reader thread termination.
+------------------------------------------------------------------------------*}
+    procedure TMQTTClient.OnRTTerminate(Sender: TObject);
+    begin
+      FReaderThreadRunning := false;
+    end;
+
 
 
 {*------------------------------------------------------------------------------
@@ -244,6 +270,8 @@ type
       if SocketWrite(Data) then Result := True
       else Result := False;
     end;
+
+
 
 
 {*------------------------------------------------------------------------------
@@ -276,6 +304,8 @@ type
     end;
 
 
+
+
 {*------------------------------------------------------------------------------
   Publishes a message sPayload to the Topic on the remote broker with the retain flag
   defined as False.
@@ -287,6 +317,8 @@ type
     begin
       Result := Publish(Topic, sPayload, False);
     end;
+
+
 
 
 {*------------------------------------------------------------------------------
@@ -320,6 +352,8 @@ type
     end;
 
 
+
+
 {*------------------------------------------------------------------------------
   Unsubscribe to Messages published to the topic specified. Only accepts 1 topic per
   call at this point.
@@ -347,6 +381,8 @@ type
     end;
 
 
+
+
 {*------------------------------------------------------------------------------
   Not Reliable. This is a leaky abstraction. The Core Socket components can only
   tell if the connection is truly Connected if they try to read or write to the
@@ -360,6 +396,8 @@ type
     end;
 
 
+
+
 {*------------------------------------------------------------------------------
   Component Constructor,
   @param Hostname   Hostname of the MQTT Server
@@ -371,11 +409,14 @@ type
       inherited Create;
       Randomize;
 
+
+
 // Create a Default ClientID as a default. Can be overridden with TMQTTClient.ClientID any time before connection.
       FClientID := 'dMQTTClient' + IntToStr(Random(1000) + 1);
       FHostname := Hostname;
       FPort := Port;
       FMessageID := 1;
+      FReaderThreadRunning := false;
     end;
 
     destructor TMQTTClient.Destroy;
@@ -388,6 +429,8 @@ type
                          Retain: Word): Byte;
     begin
 
+
+
 { Fixed Header Spec:
     bit	   |7 6	5	4	    | |3	     | |2	1	     |  |  0   |
     byte 1 |Message Type| |DUP flag| |QoS level|	|RETAIN| }
@@ -398,6 +441,8 @@ type
     begin
       Assert((FMessageID > Low(Word)), 'Message ID too low');
       Assert((FMessageID < High(Word)), 'Message ID has gotten too big');
+
+
 
 
 {  FMessageID is initialised to 1 upon TMQTTClient.Create
