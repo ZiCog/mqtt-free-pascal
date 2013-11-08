@@ -84,6 +84,9 @@ type
       FPingRespEvent: TPingRespEvent;
       FSubAckEvent: TSubAckEvent;
       FUnSubAckEvent: TUnSubAckEvent;
+
+      FCritical : TRTLCriticalSection;  
+
       // Gets a next Message ID and increases the Message ID Increment
       function GetMessageID: TBytes;
       function VariableHeaderPublish(topic: ansistring): TBytes;
@@ -91,6 +94,7 @@ type
       function VariableHeaderUnsubscribe: TBytes;
       // Internally Write the provided data to the Socket. Wrapper function.
       function SocketWrite(Data: TBytes): boolean;
+
       // These are chained event handlers from the ReceiveThread. They trigger the
       // public TMQTTClient.On*** handlers.
       procedure OnRTConnAck(Sender: TObject; ReturnCode: integer);
@@ -99,6 +103,7 @@ type
       procedure OnRTUnSubAck(Sender: TObject; MessageID: integer);
       procedure OnRTPublish(Sender: TObject; topic, payload: ansistring);
       procedure OnRTTerminate (Sender: TObject);
+      
     public 
       function isConnected: boolean;
       procedure Connect;
@@ -173,10 +178,10 @@ type
 
               // Create and start RX thread
               FReadThread := TMQTTReadThread.Create(@FSocket, FHostname, FPort);
-              FReadThread.OnConnAck := @OnRTConnAck;
-              FReadThread.OnPublish := @OnRTPublish;
-              FReadThread.OnPingResp := @OnRTPingResp;
-              FReadThread.OnSubAck := @OnRTSubAck;
+              FReadThread.OnConnAck   := @OnRTConnAck;
+              FReadThread.OnPublish   := @OnRTPublish;
+              FReadThread.OnPingResp  := @OnRTPingResp;
+              FReadThread.OnSubAck    := @OnRTSubAck;
               FReadThread.OnTerminate := @OnRTTerminate;
               FReadThread.Start;
               writeln('STARTED:');
@@ -408,20 +413,19 @@ type
     begin
       inherited Create;
       Randomize;
-
-
-
 // Create a Default ClientID as a default. Can be overridden with TMQTTClient.ClientID any time before connection.
       FClientID := 'dMQTTClient' + IntToStr(Random(1000) + 1);
       FHostname := Hostname;
       FPort := Port;
       FMessageID := 1;
       FReaderThreadRunning := false;
+      InitCriticalSection(FCritical);
     end;
 
     destructor TMQTTClient.Destroy;
     begin
       FSocket.Free;
+      DoneCriticalSection(FCritical);
       inherited;
     end;
 
@@ -441,10 +445,6 @@ type
     begin
       Assert((FMessageID > Low(Word)), 'Message ID too low');
       Assert((FMessageID < High(Word)), 'Message ID has gotten too big');
-
-
-
-
 {  FMessageID is initialised to 1 upon TMQTTClient.Create
   The Message ID is a 16-bit unsigned integer, which typically increases by exactly
   one from one message to the next, but is not required to do so.
@@ -630,7 +630,17 @@ type
 
     procedure TMQTTClient.OnRTPublish(Sender: TObject; topic, payload: ansistring);
     begin
-      if Assigned(OnPublish) then OnPublish(Self, topic, payload);
+      EnterCriticalSection (FCritical);     
+      try  
+        // Protected code.  
+        // TODO: Push message to FIFO.
+
+        if Assigned(OnPublish) then OnPublish(Self, topic, payload);
+        
+
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
     end;
 
     procedure TMQTTClient.OnRTSubAck(Sender: TObject; MessageID: integer; GrantedQoS: integer);

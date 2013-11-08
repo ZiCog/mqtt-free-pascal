@@ -76,7 +76,7 @@ type
       if ReturnCode = 0 then
         begin
           // Make subscriptions
-          MQTTClient.Subscribe('/rsm.ie/fits/detectors');
+          MQTTClient.Subscribe('rsm.ie/#');
           // Enter the running state
           state := RUNNING;
         end
@@ -119,7 +119,7 @@ type
       ;
 
       //MQTTClient := TMQTTClient.Create('localhost', 1883);
-      MQTTClient := TMQTTClient.Create('test.mosquitto.org', 1883);
+      MQTTClient := TMQTTClient.Create('192.168.0.67', 1883);
 
       // Setup callback handlers
       MQTTClient.OnConnAck := @OnConnAck;
@@ -189,10 +189,6 @@ type
                         state := CONNECT;
                       end;
           end;
-
-          // Synch with MQTT Reader Thread
-          CheckSynchronize(0);
-
           // Yawn.
           sleep(10);
         end;

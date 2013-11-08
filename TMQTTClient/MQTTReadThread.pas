@@ -81,7 +81,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
 // Takes a 2 Byte Length array and returns the length of the ansistring it preceeds as per the spec.
       function BytesToStrLength(LengthBytes: TBytes): integer;
-      // This is our data processing and event firing command. To be called via Synchronize.
+
+      // This is our data processing and event firing command.
       procedure HandleData;
 
       function SocketWrite(Data: TBytes): boolean;
@@ -202,7 +203,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                          rxState := RX_ERROR
                        else
                          begin
-                           Synchronize(@HandleData);
+                           HandleData;
                            rxState := RX_FIXED_HEADER;
                          end;
                      end;
