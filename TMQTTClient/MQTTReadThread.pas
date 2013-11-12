@@ -249,8 +249,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                 // Get the Topic
                 SetString(Topic, PChar(@CurrentMessage.Data[2]), DataLen);
                 // Get the Payload
-                SetString(Payload, PChar(@CurrentMessage.Data[2 + DataLen]), (Length(CurrentMessage.
-                                                                              Data) - 2 - DataLen));
+                SetString(Payload, PChar(@CurrentMessage.Data[2 + DataLen]),
+                          (Length(CurrentMessage.Data) - 2 - DataLen));
                 if Assigned(OnPublish) then OnPublish(Self, Topic, Payload);
               end
           else

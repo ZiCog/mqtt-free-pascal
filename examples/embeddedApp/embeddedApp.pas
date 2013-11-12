@@ -65,7 +65,6 @@ type
       procedure OnPingResp(Sender: TObject);
       procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
       procedure OnUnSubAck(Sender: TObject);
-      procedure OnPublish(Sender: TObject; topic, payload: ansistring);
     public 
       procedure run ();
     end;
@@ -82,11 +81,6 @@ type
         end
       else
         state := FAILING;
-    end;
-
-    procedure TembeddedApp.OnPublish(Sender: TObject; topic, payload: ansistring);
-    begin
-      writeln ('OnPublish: Topic: '+ topic + ' Payload: ' + payload);
     end;
 
     procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
@@ -107,6 +101,8 @@ type
     end;
 
     procedure TembeddedApp.run();
+    var
+        msg : TMessage;
     begin
       writeln ('embeddedApp MQTT Client.');
       state := CONNECT;
@@ -124,7 +120,6 @@ type
       // Setup callback handlers
       MQTTClient.OnConnAck := @OnConnAck;
       MQTTClient.OnPingResp := @OnPingResp;
-      MQTTClient.OnPublish := @OnPublish;
       MQTTClient.OnSubAck := @OnSubAck;
 
       while true do
@@ -189,11 +184,21 @@ type
                         state := CONNECT;
                       end;
           end;
+
+          repeat
+            msg := MQTTClient.getMessage;
+            if Assigned(msg) then
+              begin
+                writeln ('----------------------------------');
+                writeln ('getMessage: '+ msg.topic + ' Payload: ' + msg.payload);
+                writeln ('----------------------------------');
+              end;
+          until not Assigned(msg);
+
           // Yawn.
-          sleep(10);
+          sleep(100);
         end;
     end;
-
 
     var 
       app : TembeddedApp;

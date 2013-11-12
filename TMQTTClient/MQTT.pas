@@ -39,29 +39,46 @@ unit MQTT;
 interface
 
 uses 
-SysUtils, Classes, blcksock, MQTTReadThread;
+SysUtils, blcksock, contnrs, MQTTReadThread;
 
 type 
 
   //  Message type. 4 Bit unsigned.
   TMQTTMessageType = (
-                      Reserved0, //0	Reserved
-                      CONNECT, //	1	Client request to connect to Broker
-                      CONNACK, //	2	Connect Acknowledgment
-                      PUBLISH, //	3	Publish message
-                      PUBACK, //	4	Publish Acknowledgment
-                      PUBREC, //	5	Publish Received (assured delivery part 1)
-                      PUBREL, //	6	Publish Release (assured delivery part 2)
-                      PUBCOMP, //	7	Publish Complete (assured delivery part 3)
-                      SUBSCRIBE, //	8	Client Subscribe request
-                      SUBACK, //	9	Subscribe Acknowledgment
-                      UNSUBSCRIBE, // 10	Client Unsubscribe request
-                      UNSUBACK, // 11	Unsubscribe Acknowledgment
-                      PINGREQ, //	12	PING Request
-                      PINGRESP, //	13	PING Response
-                      DISCONNECT, // 14	Client is Disconnecting
-                      Reserved15 //	15
+                      Reserved0,   //  0 Reserved
+                      CONNECT,     //  1 Client request to connect to Broker
+                      CONNACK,     //  2 Connect Acknowledgment
+                      PUBLISH,     //  3 Publish message
+                      PUBACK,      //  4 Publish Acknowledgment
+                      PUBREC,      //  5 Publish Received (assured delivery part 1)
+                      PUBREL,      //  6 Publish Release (assured delivery part 2)
+                      PUBCOMP,     //  7 Publish Complete (assured delivery part 3)
+                      SUBSCRIBE,   //  8 Client Subscribe request
+                      SUBACK,      //  9 Subscribe Acknowledgment
+                      UNSUBSCRIBE, // 10 Client Unsubscribe request
+                      UNSUBACK,    // 11 Unsubscribe Acknowledgment
+                      PINGREQ,     // 12 PING Request
+                      PINGRESP,    // 13 PING Response
+                      DISCONNECT,  // 14 Client is Disconnecting
+                      Reserved15   // 15 Reserved
                      );
+
+  // The message class definition
+  TMessage = class
+    private
+      // The data fields of this new class
+      _topic   : String;
+      _payload : String;
+
+    public
+      // Properties to read these data values
+      property Topic   : String read _topic;
+      property PayLoad : String read _payload;
+
+      // Constructor
+      constructor Create(const Topic1 : String; const Payload1 : String);
+
+  end;
 
   TRemainingLength = Array of Byte;
   TUTF8Text = Array of Byte;
@@ -86,6 +103,7 @@ type
       FUnSubAckEvent: TUnSubAckEvent;
 
       FCritical : TRTLCriticalSection;  
+      FQueue : TQueue;
 
       // Gets a next Message ID and increases the Message ID Increment
       function GetMessageID: TBytes;
@@ -103,6 +121,7 @@ type
       procedure OnRTUnSubAck(Sender: TObject; MessageID: integer);
       procedure OnRTPublish(Sender: TObject; topic, payload: ansistring);
       procedure OnRTTerminate (Sender: TObject);
+
       
     public 
       function isConnected: boolean;
@@ -116,6 +135,7 @@ type
       function Subscribe(Topic: ansistring): integer;
       function Unsubscribe(Topic: ansistring): integer;
       function PingReq: boolean;
+      function  getMessage : TMessage;
       constructor Create(Hostname: ansistring; Port: integer);
       overload;
       destructor Destroy;
@@ -123,7 +143,6 @@ type
 
       property ClientID : ansistring read FClientID write FClientID;
       property OnConnAck : TConnAckEvent read FConnAckEvent write FConnAckEvent;
-      property OnPublish : TPublishEvent read FPublishEvent write FPublishEvent;
       property OnPingResp : TPingRespEvent read FPingRespEvent write FPingRespEvent;
       property OnSubAck : TSubAckEvent read FSubAckEvent write FSubAckEvent;
       property OnUnSubAck : TUnSubAckEvent read FUnSubAckEvent write FUnSubAckEvent;
@@ -159,6 +178,12 @@ type
 { TMQTTClient }
 
 
+constructor TMessage.Create(const Topic1 : String; const Payload1 : String);
+begin
+  // Save the passed parameters
+  self._topic   := Topic1;
+  self._payload := Payload1;
+end;
 
 
 {*------------------------------------------------------------------------------
@@ -420,11 +445,13 @@ type
       FMessageID := 1;
       FReaderThreadRunning := false;
       InitCriticalSection(FCritical);
+      FQueue := TQueue.Create;
     end;
 
     destructor TMQTTClient.Destroy;
     begin
-      FSocket.Free;
+      FSocket.free;
+      FQueue.free;
       DoneCriticalSection(FCritical);
       inherited;
     end;
@@ -616,28 +643,38 @@ type
 
     procedure TMQTTClient.OnRTConnAck(Sender: TObject; ReturnCode: integer);
     begin
-      if ReturnCode = 0 then
-        begin
-          FisConnected := true;
-        end;
-      if Assigned(OnConnAck) then OnConnAck(Self, ReturnCode);
+      // Protected code.  
+      EnterCriticalSection (FCritical);     
+      try
+        if ReturnCode = 0 then
+          begin
+            FisConnected := true;
+          end;
+        if Assigned(OnConnAck) then OnConnAck(Self, ReturnCode);
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
     end;
 
     procedure TMQTTClient.OnRTPingResp(Sender: TObject);
     begin
-      if Assigned(OnPingResp) then OnPingResp(Self);
+      // Protected code.  
+      EnterCriticalSection (FCritical);     
+      try
+        if Assigned(OnPingResp) then OnPingResp(Self);
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
     end;
 
     procedure TMQTTClient.OnRTPublish(Sender: TObject; topic, payload: ansistring);
     begin
+      // Protected code.  
       EnterCriticalSection (FCritical);     
-      try  
-        // Protected code.  
-        // TODO: Push message to FIFO.
-
-        if Assigned(OnPublish) then OnPublish(Self, topic, payload);
-        
-
+      try
+        FQueue.Push (TMessage.Create(topic, payload));
+        write ('Queue Length = ');
+        writeln (FQueue.Count);  
       finally
         LeaveCriticalSection (FCritical);
       end;
@@ -645,12 +682,34 @@ type
 
     procedure TMQTTClient.OnRTSubAck(Sender: TObject; MessageID: integer; GrantedQoS: integer);
     begin
-      if Assigned(OnSubAck) then OnSubAck(Self, MessageID, GrantedQoS);
+      // Protected code.  
+      EnterCriticalSection (FCritical);     
+      try  
+        if Assigned(OnSubAck) then OnSubAck(Self, MessageID, GrantedQoS);
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
     end;
 
     procedure TMQTTClient.OnRTUnSubAck(Sender: TObject; MessageID: integer);
     begin
-      if Assigned(OnUnSubAck) then OnUnSubAck(Self, MessageID);
+      // Protected code.  
+      EnterCriticalSection (FCritical);     
+      try  
+        if Assigned(OnUnSubAck) then OnUnSubAck(Self, MessageID);
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
     end;
 
+    function TMQTTClient.getMessage: TMessage;
+    begin
+      // Protected code.  
+      EnterCriticalSection (FCritical);     
+      try  
+        Result := TMessage(FQueue.Pop);
+      finally
+        LeaveCriticalSection (FCritical);
+      end;
+    end;
   end.
