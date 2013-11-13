@@ -1,5 +1,6 @@
 
 
+
 {
  -------------------------------------------------
   embeddedApp.pas -  An example of using the MQTT Client from a command line program
@@ -50,7 +51,6 @@ type TembeddedAppStates = (
 
 type 
   // Define class for the embedded application
-  // The MQTT callbacks must be methods of an object not stanalone procedures.
   TembeddedApp = object
     strict
     private 
@@ -61,66 +61,25 @@ type
       message : ansistring;
       pubTimer : integer;
       connectTimer : integer;
-      procedure OnConnAck(Sender: TObject; ReturnCode: longint);
-      procedure OnPingResp(Sender: TObject);
-      procedure OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
-      procedure OnUnSubAck(Sender: TObject);
     public 
       procedure run ();
     end;
 
-    procedure TembeddedApp.OnConnAck(Sender: TObject; ReturnCode: longint);
-    begin
-      writeln ('OnConnAck: Return Code = ' + IntToStr(Ord(ReturnCode)));
-      if ReturnCode = 0 then
-        begin
-          // Make subscriptions
-          MQTTClient.Subscribe('rsm.ie/#');
-          // Enter the running state
-          state := RUNNING;
-        end
-      else
-        state := FAILING;
-    end;
-
-    procedure TembeddedApp.OnSubAck(Sender: TObject; MessageID : longint; GrantedQoS : longint);
-    begin
-      writeln ('OnSubAck:');
-    end;
-
-    procedure TembeddedApp.OnUnSubAck(Sender: TObject);
-    begin
-      writeln ('OnUnSubAck:');
-    end;
-
-    procedure TembeddedApp.OnPingResp(Sender: TObject);
-    begin
-      writeln ('PING! PONG!');
-      // Reset ping counter to indicate all is OK.
-      pingCounter := 0;
-    end;
-
     procedure TembeddedApp.run();
-    var
-        msg : TMessage;
+
+    var 
+      msg : TMQTTMessage;
+      ack : TMQTTMessageAck;
     begin
       writeln ('embeddedApp MQTT Client.');
       state := CONNECT;
 
       message := 
-
-
-
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
       //MQTTClient := TMQTTClient.Create('localhost', 1883);
       MQTTClient := TMQTTClient.Create('192.168.0.67', 1883);
-
-      // Setup callback handlers
-      MQTTClient.OnConnAck := @OnConnAck;
-      MQTTClient.OnPingResp := @OnPingResp;
-      MQTTClient.OnSubAck := @OnSubAck;
 
       while true do
         begin
@@ -147,7 +106,6 @@ type
                            end;
             RUNNING :
                       begin
-
                         // Publish stuff
                         if pubTimer mod 100 = 0 then
                           begin
@@ -185,15 +143,59 @@ type
                       end;
           end;
 
+          // Read incomming MQTT messages.
           repeat
             msg := MQTTClient.getMessage;
             if Assigned(msg) then
               begin
-                writeln ('----------------------------------');
                 writeln ('getMessage: '+ msg.topic + ' Payload: ' + msg.payload);
-                writeln ('----------------------------------');
+
+                // Important to free messages here. 
+                msg.free;
               end;
           until not Assigned(msg);
+
+          // Read incomming MQTT message acknowledgments
+          repeat
+            ack := MQTTClient.getMessageAck;
+            if Assigned(ack) then
+              begin
+                case ack.messageType of 
+                  CONNACK :
+                            begin
+                              if ack.returnCode = 0 then
+                                begin
+                                  // Make subscriptions
+                                  MQTTClient.Subscribe('rsm.ie/#');
+                                  // Enter the running state
+                                  state := RUNNING;
+                                end
+                              else
+                                state := FAILING;
+                            end;
+                  PINGRESP :
+                             begin
+                               writeln ('PING! PONG!');
+                               // Reset ping counter to indicate all is OK.
+                               pingCounter := 0;
+                             end;
+                  SUBACK :
+                           begin
+                             write   ('SUBACK: ');
+                             write   (ack.messageId);
+                             write   (', ');
+                             writeln (ack.qos);
+                           end;
+                  UNSUBACK :
+                             begin
+                               write   ('UNSUBACK: ');
+                               writeln (ack.messageId);
+                             end;
+                end;
+              end;
+            // Important to free messages here. 
+            ack.free;
+          until not Assigned(ack);
 
           // Yawn.
           sleep(100);

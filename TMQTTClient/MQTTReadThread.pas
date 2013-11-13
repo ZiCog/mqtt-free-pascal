@@ -1,6 +1,7 @@
 
 
 
+
 {
  -------------------------------------------------
   MQTTReadThread.pas -  Contains the socket receiving thread that is part of the
@@ -79,6 +80,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
 
 
+
 // Takes a 2 Byte Length array and returns the length of the ansistring it preceeds as per the spec.
       function BytesToStrLength(LengthBytes: TBytes): integer;
 
@@ -111,6 +113,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     ;
     begin
       inherited Create(true);
+
 
 
 
@@ -250,7 +253,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                 SetString(Topic, PChar(@CurrentMessage.Data[2]), DataLen);
                 // Get the Payload
                 SetString(Payload, PChar(@CurrentMessage.Data[2 + DataLen]),
-                          (Length(CurrentMessage.Data) - 2 - DataLen));
+                (Length(CurrentMessage.Data) - 2 - DataLen));
                 if Assigned(OnPublish) then OnPublish(Self, Topic, Payload);
               end
           else
@@ -289,6 +292,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       Assert(Length(LengthBytes) = 2,
 
 
+
                  'TMQTTReadThread: UTF-8 Length Bytes preceeding the text must be 2 Bytes in Legnth'
                                    );
 
@@ -304,14 +308,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     begin
       Result := False;
       // Returns whether the Data was successfully written to the socket.
-      //  if isConnected then
-      //  begin
-
       sentData := FPSocket^.SendBuffer(Pointer(Data), Length(Data));
-      writeln('SocketWrite (RX): ', FPSocket^.LastErrorDesc, ': ', FPSocket^.LastError);
-      if sentData = Length(Data) then Result := True
-      else Result := False;
-      //  end;
+      if sentData = Length(Data) then
+        Result := True
     end;
-
   end.
