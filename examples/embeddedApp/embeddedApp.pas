@@ -148,7 +148,7 @@ type
             msg := MQTTClient.getMessage;
             if Assigned(msg) then
               begin
-                writeln ('getMessage: '+ msg.topic + ' Payload: ' + msg.payload);
+                writeln ('getMessage: ' + msg.topic + ' Payload: ' + msg.payload);
 
                 // Important to free messages here. 
                 msg.free;

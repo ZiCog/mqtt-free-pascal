@@ -63,14 +63,14 @@ type
   // The message class definition
   TMQTTMessage = class
     private 
-      FTopic   : String;
-      FPayload : String;
+      FTopic   : ansistring;
+      FPayload : ansistring;
 
     public 
-      property Topic   : String read FTopic;
-      property PayLoad : String read FPayload;
+      property Topic   : ansistring read FTopic;
+      property PayLoad : ansistring read FPayload;
 
-      constructor Create(const topic_ : string; const payload_ : string);
+      constructor Create(const topic_ : ansistring; const payload_ : ansistring);
     end;
 
     // The acknowledgement class definition
@@ -195,7 +195,7 @@ type
 
         implementation
 
-        constructor TMQTTMessage.Create(const Topic_ : string; const Payload_ : string);
+        constructor TMQTTMessage.Create(const Topic_ : ansistring; const Payload_ : ansistring);
         begin
           // Save the passed parameters
           FTopic   := Topic_;
