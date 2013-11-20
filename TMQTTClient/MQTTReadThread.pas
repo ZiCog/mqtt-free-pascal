@@ -217,6 +217,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                       end;
           end;
         end;
+        if Assigned(OnTerminate) then OnTerminate(Self);
     end;
 
     procedure TMQTTReadThread.HandleData;
