@@ -197,6 +197,9 @@ type
             ack.free;
           until not Assigned(ack);
 
+          // Main application loop must call this else we leak threads!
+          CheckSynchronize;
+
           // Yawn.
           sleep(100);
         end;
