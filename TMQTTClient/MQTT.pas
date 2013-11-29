@@ -641,7 +641,7 @@ type
         begin
           Assert(StartIndex >= 0);
           // WARNING! move causes range check error if source length is zero. 
-          if Length(SourceArray) > 0then
+          if Length(SourceArray) > 0 then
               Move(SourceArray[0], DestArray[StartIndex], Length(SourceArray));
         end;
 
