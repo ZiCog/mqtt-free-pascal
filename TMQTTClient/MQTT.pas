@@ -640,8 +640,9 @@ type
                                 StartIndex: integer);
         begin
           Assert(StartIndex >= 0);
-
-          Move(SourceArray[0], DestArray[StartIndex], Length(SourceArray));
+          // WARNING! move causes range check error if source length is zero. 
+          if Length(SourceArray) > 0then
+              Move(SourceArray[0], DestArray[StartIndex], Length(SourceArray));
         end;
 
         procedure AppendArray(var Dest: TUTF8Text; Source: array of Byte);
@@ -649,9 +650,13 @@ type
         var 
           DestLen: Integer;
         begin
-          DestLen := Length(Dest);
-          SetLength(Dest, DestLen + Length(Source));
-          Move(Source, Dest[DestLen], Length(Source));
+          // WARNING: move causes range check error if source length is zero!
+          if Length(Source) > 0 then
+            begin
+              DestLen := Length(Dest);
+              SetLength(Dest, DestLen + Length(Source));
+              Move(Source, Dest[DestLen], Length(Source));
+           end;
         end;
 
         function BuildCommand(FixedHead: Byte; RemainL: TRemainingLength;
