@@ -228,7 +228,8 @@ type
 
                   // Create a socket.
                   FSocket := TTCPBlockSocket.Create;
-
+                  FSocket.nonBlockMode := true;                // We really don't want sending on
+                  FSocket.NonblockSendTimeout := 1;            // the socket to block our main thread.
                   // Create and start RX thread
                   FReadThread := TMQTTReadThread.Create(@FSocket, FHostname, FPort);
                   FReadThread.OnConnAck   := @OnRTConnAck;
