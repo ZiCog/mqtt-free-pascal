@@ -266,7 +266,7 @@ type
           if SocketWrite(Data) then
             begin
               Result := True;
-              FReadThread.Terminate;
+              FReadThread.waitFor;
               FSocket.CloseSocket;
               FisConnected := False;
               FSocket.Free;
