@@ -324,6 +324,12 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
     begin
       Result := False;
       // Returns whether the Data was successfully written to the socket.
+
+      while not FPSocket^.CanWrite(0) do
+      begin
+        sleep(100);
+      end;
+
       sentData := FPSocket^.SendBuffer(Pointer(Data), Length(Data));
       if sentData = Length(Data) then
         Result := True
