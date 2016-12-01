@@ -1,7 +1,3 @@
-
-
-
-
 {
  -------------------------------------------------
   MQTTReadThread.pas -  Contains the socket receiving thread that is part of the
@@ -137,6 +133,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       VH: TBytes;
       FH: Byte;
       Payload: TUTF8Text;
+      error: integer;
     begin
       rxState := RX_START;
 
@@ -158,15 +155,34 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                         RL := RemainingLength(Length(VH) + Length(Payload));
                         Data := BuildCommand(FH, RL, VH, Payload);
 
+                        writeln('RX_START: ', FPSocket^.LastErrorDesc);
+                        writeln('RX_START: ', FPSocket^.LastError);
+
+                        //sleep(1);
+
                         // Send CONNECT message
-                        if SocketWrite(Data) then
-                          begin
-                            rxState := RX_FIXED_HEADER;
-                          end
-                        else
-                          begin
-                            rxState := RX_ERROR;
-                          end;
+                        while true do
+                        begin
+                          writeln('loop...');
+                          SocketWrite(Data);
+                          error := FPSocket^.LastError;
+                          writeln('RX_START: ', FPSocket^.LastErrorDesc);
+                          writeln('RX_START: ', error);
+                          if error = 0 then
+                            begin
+                              rxState := RX_FIXED_HEADER;
+                              break;
+                            end
+                          else
+                            begin
+                              if error = 110 then
+                              begin
+                                continue;
+                              end;
+                              rxState := RX_ERROR;
+                              break;
+                            end;
+                        end;
                       end;
             RX_FIXED_HEADER:
                              begin

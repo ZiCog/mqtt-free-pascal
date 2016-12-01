@@ -1,6 +1,12 @@
 #!/bin/bash
 
-# Build the embeddedApp MQTT client exapmple on Debian Wheezy amd64
+# Build the embeddedApp MQTT client exapmple on Debian Jessie amd64
+
+rm ../../TMQTTClient/*.ppu
+rm ../../TMQTTClient/*.o
+rm *.ppu
+rm *.o
+rm embeddedapp
 
 # For some reason the linker needs to know where to find crti.o
 # on Debian amd64

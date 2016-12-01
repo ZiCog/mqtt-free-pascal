@@ -78,8 +78,7 @@ type
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
-      //MQTTClient := TMQTTClient.Create('localhost', 1883);
-      MQTTClient := TMQTTClient.Create('192.168.0.67', 1883);
+      MQTTClient := TMQTTClient.Create('192.168.0.26', 1883);
 
       while true do
         begin
@@ -107,7 +106,7 @@ type
             RUNNING :
                       begin
                         // Publish stuff
-                        if pubTimer mod 100 = 0 then
+                        if pubTimer mod 1 = 0 then
                           begin
                             if not MQTTClient.Publish('/jack/says/', message) then
                               begin
@@ -166,7 +165,7 @@ type
                               if ack.returnCode = 0 then
                                 begin
                                   // Make subscriptions
-                                  MQTTClient.Subscribe('rsm.ie/#');
+                                  MQTTClient.Subscribe('/jack/says/');
                                   // Enter the running state
                                   state := RUNNING;
                                 end
