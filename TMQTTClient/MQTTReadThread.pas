@@ -189,6 +189,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                                multiplier := 1;
                                remainingLengthx := 0;
                                CurrentMessage.Data := nil;
+
                                CurrentMessage.FixedHeader := FPSocket^.RecvByte(1000);
                                if (FPSocket^.LastError = ESysETIMEDOUT) then continue;
                                if (FPSocket^.LastError <> 0) then

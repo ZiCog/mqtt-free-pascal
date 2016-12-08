@@ -258,6 +258,7 @@ type
         var 
           Data: TBytes;
         begin
+          writeln('TMQTTClient.Disconnect');
           Result := False;
 
           SetLength(Data, 2);
@@ -269,7 +270,7 @@ type
               FReadThread.waitFor;
               FSocket.CloseSocket;
               FisConnected := False;
-              FSocket.Free;
+              FSocket := nil;
             end
           else Result := False;
         end;
@@ -283,6 +284,7 @@ type
 ------------------------------------------------------------------------------*}
         procedure TMQTTClient.ForceDisconnect;
         begin
+          writeln('TMQTTClient.ForceDisconnect');
           if FReadThread <> nil then
             begin
               FReadThread.Terminate;
@@ -291,7 +293,6 @@ type
           if FSocket <> nil then
             begin
               FSocket.CloseSocket;
-              FSocket.Free;
               FSocket := nil;
             end;
           FisConnected := False;
