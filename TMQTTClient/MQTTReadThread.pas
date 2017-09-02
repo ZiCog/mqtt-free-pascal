@@ -34,7 +34,7 @@ interface
 
 
 uses 
-SysUtils, Classes, blcksock, BaseUnix;
+  SysUtils, Classes, blcksock, synsock;
 
 
 type TBytes = array of Byte;
@@ -191,7 +191,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                                CurrentMessage.Data := nil;
 
                                CurrentMessage.FixedHeader := FPSocket^.RecvByte(1000);
-                               if (FPSocket^.LastError = ESysETIMEDOUT) then continue;
+                               if (FPSocket^.LastError = WSAETIMEDOUT) then continue;
                                if (FPSocket^.LastError <> 0) then
                                  rxState := RX_ERROR
                                else
@@ -200,7 +200,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
             RX_LENGTH:
                        begin
                          digit := FPSocket^.RecvByte(1000);
-                         if (FPSocket^.LastError = ESysETIMEDOUT) then continue;
+                         if (FPSocket^.LastError = WSAETIMEDOUT) then continue;
                          if (FPSocket^.LastError <> 0) then
                            rxState := RX_ERROR
                          else

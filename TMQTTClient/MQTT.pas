@@ -270,7 +270,7 @@ type
               FReadThread.waitFor;
               FSocket.CloseSocket;
               FisConnected := False;
-              FSocket := nil;
+              FreeAndNil(FSocket);
             end
           else Result := False;
         end;
@@ -293,7 +293,7 @@ type
           if FSocket <> nil then
             begin
               FSocket.CloseSocket;
-              FSocket := nil;
+              FreeAndNil(FSocket);
             end;
           FisConnected := False;
         end;
