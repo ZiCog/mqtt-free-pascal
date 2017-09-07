@@ -161,7 +161,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                         //sleep(1);
 
                         // Send CONNECT message
-                        while true do
+                        while not self.Terminated do
                         begin
                           writeln('loop...');
                           SocketWrite(Data);

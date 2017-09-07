@@ -492,6 +492,12 @@ type
 
         destructor TMQTTClient.Destroy;
         begin
+          if isConnected then
+          begin
+            FReadThread.Terminate;
+            FReadThread.WaitFor;
+            //ForceDisconnect;
+          end;
           FSocket.free;
           FMessageQueue.free;
           FMessageAckQueue.free;
