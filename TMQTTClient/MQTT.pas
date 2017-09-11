@@ -492,13 +492,14 @@ type
 
         destructor TMQTTClient.Destroy;
         begin
-          if isConnected then
+          if (isConnected) and (FReadThread <> nil) then
           begin
             FReadThread.Terminate;
             FReadThread.WaitFor;
-            //ForceDisconnect;
+            //note: free is not needed - the FreeOnTerminate mode is enabled
           end;
-          FSocket.free;
+          if FSocket <> nil then
+            FreeAndNil(FSocket);
           FMessageQueue.free;
           FMessageAckQueue.free;
           DoneCriticalSection(FCritical);
