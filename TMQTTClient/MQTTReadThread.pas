@@ -48,8 +48,6 @@ type
 
 type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
-  PTCPBlockSocket = ^TTCPBlockSocket;
-
   TRemainingLength = Array of Byte;
 
   TUTF8Text = Array of Byte;
@@ -65,7 +63,6 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       FClientID: ansistring;
       FHostname: ansistring;
       FPort: integer;
-      FPSocket: PTCPBlockSocket;
       CurrentMessage: TMQTTMessage;
       // Events
       FConnAckEvent: TConnAckEvent;
@@ -83,13 +80,16 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       // This is our data processing and event firing command.
       procedure HandleData;
 
-      function SocketWrite(Data: TBytes): boolean;
 
     protected 
       procedure Execute;
       override;
-    public 
-      constructor Create(Socket: PTCPBlockSocket; Hostname: ansistring; Port: integer);
+    public
+      //todo: change Socket resurse working
+      FPSocket: TTCPBlockSocket;
+      function SocketWrite(Data: TBytes): boolean;
+
+      constructor Create(Hostname: ansistring; Port: integer);
       property OnConnAck : TConnAckEvent read FConnAckEvent write FConnAckEvent;
       property OnPublish : TPublishEvent read FPublishEvent write FPublishEvent;
       property OnPingResp : TPingRespEvent read FPingRespEvent write FPingRespEvent;
@@ -105,7 +105,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
 { TMQTTReadThread }
 
-    constructor TMQTTReadThread.Create(Socket: PTCPBlockSocket; HostName: ansistring; Port: integer)
+    constructor TMQTTReadThread.Create(HostName: ansistring; Port: integer)
     ;
     begin
       inherited Create(true);
@@ -115,7 +115,6 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
 // Create a Default ClientID as a default. Can be overridden with TMQTTClient.ClientID any time before connection.
       FClientID := 'dMQTTClientx' + IntToStr(Random(1000) + 1);
-      FPSocket := Socket;
       FHostname := Hostname;
       FPort := Port;
       FreeOnTerminate := true;
@@ -136,14 +135,18 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       error: integer;
     begin
       rxState := RX_START;
-
+      try
+      // Create a socket.
+      FPSocket := TTCPBlockSocket.Create;
+      FPSocket.nonBlockMode := true;                // We really don't want sending on
+      FPSocket.NonblockSendTimeout := 1;            // the socket to block our main thread.
       while not self.Terminated do
         begin
           case rxState of 
             RX_START:
                       begin
                         // Make the socket connection
-                        FPSocket^.Connect(FHostname, IntToStr(FPort));
+                        FPSocket.Connect(FHostname, IntToStr(FPort));
 
                         //  Build CONNECT message
                         FH := FixedHeader(MQTT.CONNECT, 0, 0, 0);
@@ -155,8 +158,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                         RL := RemainingLength(Length(VH) + Length(Payload));
                         Data := BuildCommand(FH, RL, VH, Payload);
 
-                        writeln('RX_START: ', FPSocket^.LastErrorDesc);
-                        writeln('RX_START: ', FPSocket^.LastError);
+                        writeln('RX_START: ', FPSocket.LastErrorDesc);
+                        writeln('RX_START: ', FPSocket.LastError);
 
                         //sleep(1);
 
@@ -165,8 +168,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                         begin
                           writeln('loop...');
                           SocketWrite(Data);
-                          error := FPSocket^.LastError;
-                          writeln('RX_START: ', FPSocket^.LastErrorDesc);
+                          error := FPSocket.LastError;
+                          writeln('RX_START: ', FPSocket.LastErrorDesc);
                           writeln('RX_START: ', error);
                           if error = 0 then
                             begin
@@ -190,18 +193,18 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                                remainingLengthx := 0;
                                CurrentMessage.Data := nil;
 
-                               CurrentMessage.FixedHeader := FPSocket^.RecvByte(1000);
-                               if (FPSocket^.LastError = WSAETIMEDOUT) then continue;
-                               if (FPSocket^.LastError <> 0) then
+                               CurrentMessage.FixedHeader := FPSocket.RecvByte(1000);
+                               if (FPSocket.LastError = WSAETIMEDOUT) then continue;
+                               if (FPSocket.LastError <> 0) then
                                  rxState := RX_ERROR
                                else
                                  rxState := RX_LENGTH;
                              end;
             RX_LENGTH:
                        begin
-                         digit := FPSocket^.RecvByte(1000);
-                         if (FPSocket^.LastError = WSAETIMEDOUT) then continue;
-                         if (FPSocket^.LastError <> 0) then
+                         digit := FPSocket.RecvByte(1000);
+                         if (FPSocket.LastError = WSAETIMEDOUT) then continue;
+                         if (FPSocket.LastError <> 0) then
                            rxState := RX_ERROR
                          else
                            begin
@@ -218,8 +221,8 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
             RX_DATA:
                      begin
                        SetLength(CurrentMessage.Data, remainingLengthx);
-                       FPSocket^.RecvBufferEx(Pointer(CurrentMessage.Data), remainingLengthx, 1000);
-                       if (FPSocket^.LastError <> 0) then
+                       FPSocket.RecvBufferEx(Pointer(CurrentMessage.Data), remainingLengthx, 1000);
+                       if (FPSocket.LastError <> 0) then
                          rxState := RX_ERROR
                        else
                          begin
@@ -234,6 +237,10 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                       end;
           end;
         end;
+      finally
+        FPSocket.CloseSocket();
+        FreeAndNil(FPSocket);
+      end; // try
     end;
 
     procedure TMQTTReadThread.HandleData;
@@ -326,12 +333,12 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       Result := False;
       // Returns whether the Data was successfully written to the socket.
 
-      while not FPSocket^.CanWrite(0) do
+      while not FPSocket.CanWrite(0) do
       begin
         sleep(100);
       end;
 
-      sentData := FPSocket^.SendBuffer(Pointer(Data), Length(Data));
+      sentData := FPSocket.SendBuffer(Pointer(Data), Length(Data));
       if sentData = Length(Data) then
         Result := True
     end;
