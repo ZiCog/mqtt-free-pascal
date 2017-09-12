@@ -45,6 +45,7 @@ type
                       Reserved0,   //  0 Reserved
                       CONNECT,     //  1 Client request to connect to Broker
                       CONNACK,     //  2 Connect Acknowledgment
+                      // PUBLISH Control Packet is sent from a Client to a Server or from Server to a Client to transport an Application Message.
                       PUBLISH,     //  3 Publish message
                       PUBACK,      //  4 Publish Acknowledgment
                       PUBREC,      //  5 Publish Received (assured delivery part 1)
@@ -131,7 +132,7 @@ type
           procedure OnRTPingResp(Sender: TObject);
           procedure OnRTSubAck(Sender: TObject; MessageID: integer; GrantedQoS: integer);
           procedure OnRTUnSubAck(Sender: TObject; MessageID: integer);
-          procedure OnRTPublish(Sender: TObject; topic, payload: ansistring);
+          procedure OnRTPublish(Sender: TObject; topic, payload: ansistring; retain: boolean);
           procedure OnRTTerminate (Sender: TObject);
 
 
@@ -163,9 +164,7 @@ type
         end;
 
         // Message Component Build helpers
-        function FixedHeader(MessageType: TMQTTMessageType; Dup: Word; Qos: Word; Retain: Word):
-                                                                                                Byte
-        ;
+        function FixedHeader(MessageType: TMQTTMessageType; Dup, Qos, Retain: byte): Byte;
 
         // Variable Header per command creation funcs
         function VariableHeaderConnect(KeepAlive: Word): TBytes;
@@ -507,13 +506,15 @@ type
         end;
 
         function FixedHeader(MessageType: TMQTTMessageType; Dup, Qos,
-                             Retain: Word): Byte;
+                             Retain: byte): Byte;
         begin
 
 { Fixed Header Spec:
-    bit	   |7 6	5	4	    | |3	     | |2	1	     |  |  0   |
-    byte 1 |Message Type| |DUP flag| |QoS level|	|RETAIN| }
-          Result := (Ord(MessageType) * 16) + (Dup * 8) + (Qos * 2) + (Retain * 1);
+  byte 1 bits |7 6 5 4     | 3        | 2 1      | 0     |
+  fields      |Message Type| DUP flag | QoS level| RETAIN|
+}
+          Result := Byte(Ord(MessageType) shl 4) or (Dup shl 3) or (Qos shl 1) or (Retain shl 0);
+          //todo: OLD code: Result := (Ord(MessageType) * 16) + (Dup * 8) + (Qos * 2) + (Retain * 1);
         end;
 
         function TMQTTClient.GetMessageID: TBytes;
@@ -731,11 +732,11 @@ type
           end;
       end;
 
-      procedure TMQTTClient.OnRTPublish(Sender: TObject; topic, payload: ansistring);
+      procedure TMQTTClient.OnRTPublish(Sender: TObject; topic, payload: ansistring; retain: boolean);
       begin
         if Assigned(OnPublish) then
           begin
-            OnPublish(Self, topic, payload);
+            OnPublish(Self, topic, payload, retain);
           end
         else
           begin

@@ -53,7 +53,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
   TUTF8Text = Array of Byte;
 
   TConnAckEvent = procedure (Sender: TObject; ReturnCode: integer) of object;
-  TPublishEvent = procedure (Sender: TObject; topic, payload: ansistring) of object;
+  TPublishEvent = procedure (Sender: TObject; topic, payload: ansistring; retain: boolean) of object;
   TPingRespEvent = procedure (Sender: TObject) of object;
   TSubAckEvent = procedure (Sender: TObject; MessageID: integer; GrantedQoS: integer) of object;
   TUnSubAckEvent = procedure (Sender: TObject; MessageID: integer) of object;
@@ -102,6 +102,16 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
 
     uses 
     MQTT;
+
+    procedure SetBit(var Value: byte; const Index: Byte; const State: Boolean); inline;
+    begin
+      Value := (Value and ((byte(1) shl Index) xor High(byte))) or (byte(State) shl Index);
+    end;
+
+    function GetBit(const Value: byte; const Index: Byte): Boolean; inline;
+    begin
+      Result := ((Value shr Index) and 1) = 1;
+    end;
 
 { TMQTTReadThread }
 
@@ -249,6 +259,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
       MessageType: Byte;
       DataLen: integer;
       QoS: integer;
+      Retain: boolean;
       Topic: ansistring;
       Payload: ansistring;
       ResponseVH: TBytes;
@@ -271,6 +282,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
           else
             if (MessageType = Ord(MQTT.PUBLISH)) then
               begin
+                Retain := GetBit(CurrentMessage.FixedHeader, 0);
                 // Read the Length Bytes
                 DataLen := BytesToStrLength(Copy(CurrentMessage.Data, 0, 2));
                 // Get the Topic
@@ -278,7 +290,7 @@ type TRxStates = (RX_START, RX_FIXED_HEADER, RX_LENGTH, RX_DATA, RX_ERROR);
                 // Get the Payload
                 SetString(Payload, PChar(@CurrentMessage.Data[2 + DataLen]),
                 (Length(CurrentMessage.Data) - 2 - DataLen));
-                if Assigned(OnPublish) then OnPublish(Self, Topic, Payload);
+                if Assigned(OnPublish) then OnPublish(Self, Topic, Payload, retain);
               end
           else
             if (MessageType = Ord(MQTT.SUBACK)) then
