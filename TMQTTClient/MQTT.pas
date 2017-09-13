@@ -62,16 +62,21 @@ type
                      );
 
   // The message class definition
+
+  { TMQTTMessage }
+
   TMQTTMessage = class
     private 
       FTopic   : ansistring;
       FPayload : ansistring;
+      FRetain  : boolean;
 
     public 
       property Topic   : ansistring read FTopic;
       property PayLoad : ansistring read FPayload;
+      property Retain  : boolean read FRetain;
 
-      constructor Create(const topic_ : ansistring; const payload_ : ansistring);
+      constructor Create(const topic_ : ansistring; const payload_ : ansistring; const retain_: boolean);
     end;
 
     // The acknowledgement class definition
@@ -193,11 +198,13 @@ type
 
         implementation
 
-        constructor TMQTTMessage.Create(const Topic_ : ansistring; const Payload_ : ansistring);
+                                constructor TMQTTMessage.Create(const topic_: ansistring;
+                  const payload_: ansistring; const retain_: boolean);
         begin
           // Save the passed parameters
           FTopic   := Topic_;
           FPayload := Payload_;
+          FRetain   := retain_;
         end;
 
         constructor TMQTTMessageAck.Create(const messageType_ : TMQTTMessageType;
@@ -743,7 +750,7 @@ type
             // Protected code.  
             EnterCriticalSection (FCritical);
             try
-              FMessageQueue.Push (TMQTTMessage.Create(topic, payload));
+              FMessageQueue.Push (TMQTTMessage.Create(topic, payload, retain));
             finally
               LeaveCriticalSection (FCritical);
             end;
