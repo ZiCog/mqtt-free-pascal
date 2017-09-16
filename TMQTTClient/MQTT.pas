@@ -599,12 +599,22 @@ type
 
         function VariableHeaderConnect(KeepAlive: Word): TBytes;
 
-        const 
+        const
+          //todo: version update! MQIsdp->MQTT. version 4!
           MQTT_PROTOCOL = 'MQIsdp';
           MQTT_VERSION = 3;
 
         var 
           Qos, Retain: word;
+{todo: connect flags
+7 User Name Flag
+6 Password Flag
+5 Will Retain
+4 Will QoS
+3 Will QoS
+2 Will Flag
+1 Clean Session
+0 Reserved }
           iByteIndex: integer;
           ProtoBytes: TUTF8Text;
         begin
