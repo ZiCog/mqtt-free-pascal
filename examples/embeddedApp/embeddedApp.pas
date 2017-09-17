@@ -38,9 +38,19 @@ program embeddedApp;
 
 // cthreads is required to get the MQTTReadThread working.
 
-uses  cthreads, Classes, MQTT, sysutils;
+uses
+  {$IFDEF UNIX} {$IFDEF UseCThreads}
+  cthreads, {$ENDIF} {$ENDIF}
+  Classes, MQTT, laz_synapse, sysutils;
 
 // The major states of the application.
+
+const
+  pubTimerInterval = 60*10; // 60 - 1 minute
+  pingTimerInterval = 10*10; // 10 - ping every 10 sec
+  MQTT_Server = '192.168.1.19';
+  MQTT_Topic = '/jack/says';
+  //MQTT_Server = '192.168.0.26';
 
 type TembeddedAppStates = (
                            CONNECT,
@@ -53,7 +63,7 @@ type
   // Define class for the embedded application
   TembeddedApp = object
     strict
-    private 
+    private
       MQTTClient: TMQTTClient;
       pingCounter : integer;
       pingTimer : integer;
@@ -61,7 +71,8 @@ type
       message : ansistring;
       pubTimer : integer;
       connectTimer : integer;
-    public 
+    public
+      terminate: boolean;
       procedure run ();
     end;
 
@@ -78,9 +89,9 @@ type
            'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy.'
       ;
 
-      MQTTClient := TMQTTClient.Create('192.168.0.26', 1883);
+      MQTTClient := TMQTTClient.Create(MQTT_Server, 1883);
 
-      while true do
+      while not terminate do
         begin
           case state of 
             CONNECT :
@@ -106,9 +117,9 @@ type
             RUNNING :
                       begin
                         // Publish stuff
-                        if pubTimer mod 1 = 0 then
+                        if pubTimer mod pubTimerInterval = 0 then
                           begin
-                            if not MQTTClient.Publish('/jack/says/', message) then
+                            if not MQTTClient.Publish(MQTT_Topic, message) then
                               begin
                                 writeln ('embeddedApp: Error: Publish Failed.');
                                 state := FAILING;
@@ -149,6 +160,9 @@ type
               begin
                 writeln ('getMessage: ' + msg.topic + ' Payload: ' + msg.payload);
 
+                if msg.PayLoad = 'stop' then
+                  terminate := true;
+
                 // Important to free messages here. 
                 msg.free;
               end;
@@ -165,7 +179,7 @@ type
                               if ack.returnCode = 0 then
                                 begin
                                   // Make subscriptions
-                                  MQTTClient.Subscribe('/jack/says/');
+                                  MQTTClient.Subscribe(MQTT_Topic);
                                   // Enter the running state
                                   state := RUNNING;
                                 end
@@ -202,6 +216,9 @@ type
           // Yawn.
           sleep(100);
         end;
+
+        MQTTClient.ForceDisconnect;
+        FreeAndNil(MQTTClient);
     end;
 
     var 
